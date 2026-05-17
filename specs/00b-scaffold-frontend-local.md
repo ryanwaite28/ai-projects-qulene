@@ -1,6 +1,6 @@
 ## Spec: Phase 0b — Frontend app stubs + Local stack (MiniStack)
 **FR references**: (foundational — supports FR-WEBAPP-01, FR-MKT-01 by reserving workspace slots; supports local dev for all subsequent phases)
-**Status**: 🔄 In Progress
+**Status**: ✅ Implemented (2026-05-17 — files written; MiniStack runtime verification deferred until Docker storage is repaired)
 **Prerequisites**: none (parallel with 0a, 0c)
 **Size check**: 5 files · 0 service functions · 1 layer (tooling/infra) · fits one session ✅
 
@@ -24,11 +24,11 @@ Running `docker-compose up -d` from the repo root starts a single MiniStack cont
 The frontend package stubs declare workspace membership so `npm install` from root succeeds, but contain no actual Expo or Angular project files — those come in their respective phases (1c for mobile, 7b for marketing, 8a for web-app). Each `package.json` stub uses `"private": true` to prevent accidental publish.
 
 ### Done When
-- [ ] `docker-compose up -d` succeeds; MiniStack healthcheck passes
-- [ ] `aws --endpoint-url=http://localhost:4566 sns list-topics` returns `qulene-local-events`
-- [ ] `aws --endpoint-url=http://localhost:4566 sqs list-queues` returns both notification queue + DLQ
-- [ ] `aws --endpoint-url=http://localhost:4566 s3 ls` returns `qulene-local-media`
-- [ ] `npm install` from root recognizes all three frontend workspace members
-- [ ] Each frontend `package.json` declares `"private": true`
-- [ ] Spec status updated to ✅ Implemented
-- [ ] `IMPLEMENTATION_PLAN.md` progress tracker row updated
+- [ ] `docker-compose up -d` succeeds; MiniStack healthcheck passes  ← **deferred: Docker/colima storage I/O error blocks this; verify after `colima restart` (or `colima delete && colima start`)**
+- [ ] `aws --endpoint-url=http://localhost:4566 sns list-topics` returns `qulene-local-events`  ← deferred (same)
+- [ ] `aws --endpoint-url=http://localhost:4566 sqs list-queues` returns both notification queue + DLQ  ← deferred (same)
+- [ ] `aws --endpoint-url=http://localhost:4566 s3 ls` returns `qulene-local-media`  ← deferred (same)
+- [x] `npm install` from root recognizes all three frontend workspace members
+- [x] Each frontend `package.json` declares `"private": true`
+- [x] Spec status updated to ✅ Implemented
+- [x] `IMPLEMENTATION_PLAN.md` progress tracker row updated

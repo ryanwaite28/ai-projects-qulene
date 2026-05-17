@@ -1,0 +1,9 @@
+{
+  "name": "@qulene/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Qulene Expo React Native mobile app (scaffold only — full Expo init in Phase 1c)",
+  "scripts": {
+    "start": "echo 'Run after Phase 1c: npx expo start'"
+  }
+}

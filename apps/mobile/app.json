@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Qulene",
+    "slug": "qulene",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "qulene"
+  }
+}

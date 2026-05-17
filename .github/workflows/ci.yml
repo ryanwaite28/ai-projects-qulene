@@ -1,0 +1,84 @@
+###############################################################################
+# Qulene CI — lint, typecheck, and (placeholder) ng lint for both Angular apps.
+#
+# This is the Phase 0c skeleton. Phase 9a extends it with build, test, esbuild
+# bundle audit, and deploy workflows.
+#
+# AWS auth (when needed by future steps) uses OIDC + GitHubActionsDevOpsDeployRole.
+# Terraform steps must set TF_VAR_aws_profile="" to bypass the rmw-llc local default.
+###############################################################################
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write   # required for OIDC AWS auth in future deploy steps
+
+jobs:
+  lint-typecheck:
+    name: Lint + Typecheck (backend + packages)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  ng-lint-web-app:
+    name: ng lint (apps/web-app — placeholder until 8a)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: ng lint (skipped — workspace not scaffolded yet)
+        run: |
+          if [ -f apps/web-app/angular.json ]; then
+            cd apps/web-app && npx --yes @angular/cli@17 lint
+          else
+            echo "apps/web-app not yet scaffolded; skipping ng lint (Phase 8a will activate this)."
+          fi
+
+  ng-lint-marketing:
+    name: ng lint (apps/marketing — placeholder until 7b)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: ng lint (skipped — workspace not scaffolded yet)
+        run: |
+          if [ -f apps/marketing/angular.json ]; then
+            cd apps/marketing && npx --yes @angular/cli@17 lint
+          else
+            echo "apps/marketing not yet scaffolded; skipping ng lint (Phase 7b will activate this)."
+          fi

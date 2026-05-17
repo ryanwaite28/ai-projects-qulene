@@ -1,0 +1,9 @@
+{
+  "name": "@qulene/marketing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Qulene marketing SPA (scaffold only — full Angular init in Phase 7b)",
+  "scripts": {
+    "start": "echo 'Run after Phase 7b: ng serve --port 8080'"
+  }
+}

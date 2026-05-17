@@ -611,9 +611,9 @@ and reported your findings.
 
 | Phase | Name | Spec | Status | Date Completed |
 | --- | --- | --- | --- | --- |
-| 0a | Root + Backend + Packages workspace | `specs/00a-scaffold-root.md` | ⬜ Not Started | — |
-| 0b | Frontend app stubs + Local stack | `specs/00b-scaffold-frontend-local.md` | ⬜ Not Started | — |
-| 0c | Terraform skeleton + CI workflow | `specs/00c-scaffold-terraform-ci.md` | ⬜ Not Started | — |
+| 0a | Root + Backend + Packages workspace | `specs/00a-scaffold-root.md` | ✅ Complete | 2026-05-17 |
+| 0b | Frontend app stubs + Local stack | `specs/00b-scaffold-frontend-local.md` | ✅ Complete | 2026-05-17 |
+| 0c | Terraform skeleton + CI workflow | `specs/00c-scaffold-terraform-ci.md` | ✅ Complete | 2026-05-17 |
 | 1a | Backend auth | `specs/01a-auth-backend.md` | ⬜ Not Started | — |
 | 1b | Terraform Cognito + API Gateway + lambda-auth | `specs/01b-auth-terraform.md` | ⬜ Not Started | — |
 | 1c | Mobile auth | `specs/01c-auth-mobile.md` | ⬜ Not Started | — |

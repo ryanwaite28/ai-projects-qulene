@@ -1,0 +1,9 @@
+{
+  "name": "@qulene/web-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Qulene Angular web application (scaffold only — full Angular init in Phase 8a)",
+  "scripts": {
+    "start": "echo 'Run after Phase 8a: ng serve'"
+  }
+}

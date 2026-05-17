@@ -1,0 +1,17 @@
+services:
+  ministack:
+    image: nahuelnucera/ministack:latest
+    container_name: qulene-ministack
+    ports:
+      - "4566:4566"
+    environment:
+      MINISTACK_ACCOUNT_ID: "000000000000"
+      MINISTACK_REGION: us-east-1
+    volumes:
+      - ./infra/ministack:/docker-entrypoint-initaws.d/ready.d
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_ministack/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
