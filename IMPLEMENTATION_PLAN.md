@@ -298,12 +298,12 @@ The notification Lambda:
 - **Prerequisites**: 1b ✅
 - **Key files**: `backend/src/services/business.service.ts`, `backend/src/db/tables/business-profiles.table.ts`, `backend/src/handlers/business.handler.ts`, `backend/src/clients/s3.client.ts`, `infra/terraform/modules/dynamodb-business-profiles/main.tf`, `infra/terraform/modules/lambda-businesses/main.tf`, tests
 - **Done When**:
-  - [ ] `GET /businesses` (public, paginated, `category` filter)
-  - [ ] `GET /businesses/:businessId` (public)
-  - [ ] `PATCH /businesses/me` (BUSINESS only)
-  - [ ] `POST /businesses/me/avatar` (BUSINESS only, presigned URL)
-  - [ ] Role enforcement tested (CUSTOMER → 403)
-  - [ ] Unit + integration tests pass; `dist/lambdas/businesses/` produced
+  - [x] `GET /businesses` (public, paginated, `category` filter)
+  - [x] `GET /businesses/:businessId` (public)
+  - [x] `PATCH /businesses/me` (BUSINESS only)
+  - [x] `POST /businesses/me/avatar` (BUSINESS only, presigned URL)
+  - [x] Role enforcement tested (CUSTOMER → 403)
+  - [x] Unit + integration tests pass; `dist/lambdas/businesses/` produced
 
 #### 2b — Backend services (service offerings)
 
@@ -311,11 +311,11 @@ The notification Lambda:
 - **Prerequisites**: 1b ✅
 - **Key files**: `backend/src/services/service.service.ts`, `backend/src/db/tables/services.table.ts`, `backend/src/handlers/service.handler.ts`, `infra/terraform/modules/dynamodb-services/main.tf`, `infra/terraform/modules/lambda-services/main.tf`, tests
 - **Done When**:
-  - [ ] `GET /businesses/:businessId/services` (public)
-  - [ ] `POST /businesses/me/services` (BUSINESS, max 20 active)
-  - [ ] `PATCH /businesses/me/services/:serviceId` (BUSINESS, ownership-checked)
-  - [ ] `DELETE /businesses/me/services/:serviceId` (soft delete → `status=DELETED`)
-  - [ ] Role + ownership enforcement tested
+  - [x] `GET /businesses/:businessId/services` (public)
+  - [x] `POST /businesses/me/services` (BUSINESS, max 20 active)
+  - [x] `PATCH /businesses/me/services/:serviceId` (BUSINESS, ownership-checked)
+  - [x] `DELETE /businesses/me/services/:serviceId` (soft delete → `status=DELETED`)
+  - [x] Role + ownership enforcement tested
 
 #### 2c — Backend availability windows
 
@@ -323,16 +323,16 @@ The notification Lambda:
 - **Prerequisites**: 1b ✅
 - **Key files**: `backend/src/services/availability.service.ts`, `backend/src/db/tables/availability-windows.table.ts`, `backend/src/handlers/availability.handler.ts` (added to business.handler), Terraform table module, tests
 - **Done When**:
-  - [ ] `GET /businesses/:businessId/availability` (public)
-  - [ ] `POST /businesses/me/availability` (BUSINESS, max 14 windows, 2 per day)
-  - [ ] `DELETE /businesses/me/availability/:windowId` (BUSINESS, ownership-checked)
+  - [x] `GET /businesses/:businessId/availability` (public)
+  - [x] `POST /businesses/me/availability` (BUSINESS, max 14 windows, 2 per day)
+  - [x] `DELETE /businesses/me/availability/:windowId` (BUSINESS, ownership-checked)
 
 #### 2d — Mobile business management (profile + services + availability)
 
 - **Spec**: `specs/02d-business-mobile.md`
 - **Prerequisites**: 1c ✅, 2a ✅, 2b ✅, 2c ✅
 - **Key files**: `apps/mobile/app/(business)/{profile.tsx,services.tsx,availability.tsx}`, supporting hooks
-- **Done When**: 3 screens implemented with empty states + loading skeletons + at least one navigation entry per route (business tab bar)
+- **Done When**: ✅ 3 screens implemented with empty states + loading skeletons + at least one navigation entry per route (business tab bar)
 
 #### 2e — Mobile customer browse (list + detail)
 
@@ -617,11 +617,11 @@ and reported your findings.
 | 1a | Backend auth | `specs/01a-auth-backend.md` | ✅ Complete | 2026-05-17 |
 | 1b | Terraform Cognito + API Gateway + lambda-auth | `specs/01b-auth-terraform.md` | ✅ Complete | 2026-05-17 |
 | 1c | Mobile auth | `specs/01c-auth-mobile.md` | ✅ Complete | 2026-05-18 |
-| 2a | Backend business profile | `specs/02a-business-profile-backend.md` | ⬜ Not Started | — |
-| 2b | Backend services | `specs/02b-services-backend.md` | ⬜ Not Started | — |
-| 2c | Backend availability windows | `specs/02c-availability-backend.md` | ⬜ Not Started | — |
-| 2d | Mobile business management | `specs/02d-business-mobile.md` | ⬜ Not Started | — |
-| 2e | Mobile customer browse | `specs/02e-browse-mobile.md` | ⬜ Not Started | — |
+| 2a | Backend business profile | `specs/02a-business-profile-backend.md` | ✅ Complete | 2026-05-18 |
+| 2b | Backend services | `specs/02b-services-backend.md` | ✅ Complete | 2026-05-18 |
+| 2c | Backend availability windows | `specs/02c-availability-backend.md` | ✅ Complete | 2026-05-18 |
+| 2d | Mobile business management | `specs/02d-business-mobile.md` | ✅ Complete | 2026-05-18 |
+| 2e | Mobile customer browse | `specs/02e-browse-mobile.md` | ✅ Complete | 2026-05-18 |
 | 3a | Backend appointment tables | `specs/03a-appointment-tables.md` | ⬜ Not Started | — |
 | 3b | Backend appointment customer flow | `specs/03b-appointment-customer-backend.md` | ⬜ Not Started | — |
 | 3c | Backend appointment business actions | `specs/03c-appointment-business-backend.md` | ⬜ Not Started | — |

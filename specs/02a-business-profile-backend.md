@@ -1,6 +1,6 @@
 ## Spec: Phase 2a — Backend business profile (service + table + handler + S3 + TF)
 **FR references**: FR-BIZ-01, FR-BIZ-02, FR-BIZ-03, FR-BIZ-04, FR-BIZ-05, FR-BIZ-06
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 1b ✅
 **Size check**: 8 files · 4 service functions · 1 layer (backend + TF) · 4 routes (GET list, GET by id, PATCH me, POST avatar) · fits one session ✅
 
@@ -32,12 +32,18 @@ FR-BIZ-01 through FR-BIZ-06 define the business-facing identity layer needed bef
 **Role enforcement (handler)**: `PATCH /businesses/me` and `POST /businesses/me/avatar` require `role=BUSINESS` → 403 if not.
 
 ### Done When
-- [ ] `GET /businesses` returns paginated list, filterable by `category`
-- [ ] `GET /businesses/:businessId` returns 404 for missing IDs
-- [ ] `PATCH /businesses/me` (BUSINESS) creates or merges profile
-- [ ] `POST /businesses/me/avatar` returns presigned URL with 5-min expiry
-- [ ] CUSTOMER calling business-only endpoints → 403 (regression-tested)
-- [ ] `dist/lambdas/businesses/index.js` bundle present
-- [ ] API GW integration block for all 4 routes added to Terraform
-- [ ] Lambda env vars match `process.env.*` reads exactly
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `GET /businesses` returns paginated list, filterable by `category`
+- [x] `GET /businesses/:businessId` returns 404 for missing IDs
+- [x] `PATCH /businesses/me` (BUSINESS) creates or merges profile
+- [x] `POST /businesses/me/avatar` returns presigned URL with 5-min expiry
+- [x] CUSTOMER calling business-only endpoints → 403 (regression-tested)
+- [x] `dist/lambdas/businesses/index.js` bundle present
+- [x] API GW integration block for all 4 routes added to Terraform
+- [x] Lambda env vars match `process.env.*` reads exactly (BUSINESS_PROFILES_TABLE, MEDIA_BUCKET, S3_ENDPOINT, AWS_REGION)
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+
+### Implementation Notes
+- S3 media bucket (`qulene-{env}-media`) added inline to `infra/terraform/envs/dev/main.tf` (not listed in original spec — gap identified at kickoff validation).
+- `MEDIA_BUCKET` env var added to Lambda env block (gap identified at kickoff validation).
+- `lambda-businesses` is not a separate Terraform module; it follows Phase 1b's pattern of instantiating the reusable `lambda` module directly in `dev/main.tf` with IAM policies inline.
+- FR-BIZ-01 describes eager profile creation on registration; implementation uses lazy creation (on first `PATCH /businesses/me`) per spec Behavior section. FR-BIZ-01 description is inaccurate; spec is authoritative.

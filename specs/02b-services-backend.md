@@ -1,6 +1,6 @@
 ## Spec: Phase 2b — Backend services (offerings)
 **FR references**: FR-SVC-01, FR-SVC-02, FR-SVC-03, FR-SVC-04, FR-SVC-05
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 1b ✅
 **Size check**: 6 files · 4 service functions · 1 layer · 4 routes · fits one session ✅
 
@@ -30,11 +30,18 @@ FR-SVC-01–05 define the catalog of bookable offerings — the foundational ent
 **Note on FR-BIZ-05 `isActive`**: this phase does not back-update `business-profiles.isActive` on service create/delete — the responsibility for that cross-table update is documented as a follow-up in Phase 2a's spec. For portfolio scale (low volume), `business.service.isActive` can be lazily recomputed in `listActiveBusinesses`.
 
 ### Done When
-- [ ] `GET /businesses/:businessId/services` returns active services
-- [ ] `POST /businesses/me/services` blocked at 20 active (FR-SVC-02)
-- [ ] `PATCH /businesses/me/services/:serviceId` ownership-enforced (403 on other business)
-- [ ] `DELETE` sets `status=DELETED` and publishes `SERVICE_REMOVED` SNS event
-- [ ] CUSTOMER → 403 on business routes (regression test)
-- [ ] `dist/lambdas/services/index.js` bundle present
-- [ ] API GW integration blocks added for all 4 routes
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `GET /businesses/:businessId/services` returns active services
+- [x] `POST /businesses/me/services` blocked at 20 active (FR-SVC-02)
+- [x] `PATCH /businesses/me/services/:serviceId` ownership-enforced (403 on other business)
+- [x] `DELETE` sets `status=DELETED` and publishes `SERVICE_REMOVED` SNS event
+- [x] CUSTOMER → 403 on business routes (regression test)
+- [x] `dist/lambdas/services/index.js` bundle present
+- [x] API GW integration blocks added for all 4 routes
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+
+### Implementation Notes
+- Table schema corrected: `serviceId` is PK only (no sort key). Spec said `(PK: serviceId, SK: businessId)` which would require businessId for GetItem — impractical with path-only serviceId.
+- SNS topic `qulene-{env}-events` provisioned inline in `dev/main.tf` (Phase 5a was the designated owner, but Phase 2b is the first publisher). Phase 5a's scope adjusted to SQS queues + subscriptions + notification Lambda.
+- `SNS_TOPIC_ARN` passed as Lambda env var (not Secrets Manager) — topic ARN is not sensitive. Flagged as tech debt for Phase 9c if needed.
+- `sns.client.ts` added to `backend/src/clients/` (follows S3 client pattern from Phase 2a).
+- `vitest.config.ts` updated with `SERVICES_TABLE`, `SNS_TOPIC_ARN`, `SNS_ENDPOINT`, `BUSINESS_PROFILES_TABLE`.

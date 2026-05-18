@@ -3,6 +3,8 @@ import { execSync } from 'child_process';
 
 const entries: Record<string, string> = {
   auth: 'src/handlers/auth.handler.ts',
+  businesses: 'src/handlers/business.handler.ts',
+  services: 'src/handlers/service.handler.ts',
 };
 
 await Promise.all(

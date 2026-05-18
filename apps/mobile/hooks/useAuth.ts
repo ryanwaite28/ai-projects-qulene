@@ -7,6 +7,7 @@ import {
   getCurrentSession,
   type SignUpParams,
 } from '../lib/cognito';
+import type { UserRole } from '@qulene/api-types';
 
 const TOKEN_KEY = 'qulene_access_token';
 const PROFILE_SYNCED_KEY = 'qulene_profile_synced';
@@ -14,6 +15,7 @@ const PROFILE_SYNCED_KEY = 'qulene_profile_synced';
 export interface AuthSession {
   accessToken: string;
   userId: string;
+  role: UserRole | null;
 }
 
 export interface UseAuthResult {

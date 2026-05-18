@@ -1,6 +1,6 @@
 ## Spec: Phase 2e — Mobile customer browse (list businesses + business detail)
 **FR references**: FR-BIZ-03, FR-BIZ-04, FR-SVC-04, FR-AVL-03
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 1c ✅, 2a ✅, 2b ✅, 2c ✅
 **Size check**: 4 files · 0 service functions · 1 layer (mobile) · 2 screens · fits one session ✅
 
@@ -24,9 +24,17 @@ FR-BIZ-03/04, FR-SVC-04, FR-AVL-03: customers must be able to discover and inspe
 **Navigation completeness**: Browse is a tab; business detail is reachable by tapping any business card. Tapping a service row from the detail will be wired to the appointment request screen in Phase 3d (placeholder shows toast for now).
 
 ### Done When
-- [ ] Browse screen lists businesses paginated with category filter
-- [ ] Business detail renders profile + services + availability with skeletons
-- [ ] Empty states on no-businesses and on 404 business detail
-- [ ] All NativeWind; no `StyleSheet.create`, no `style={}`
-- [ ] All routes have a navigation entry point
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Browse screen lists businesses paginated with category filter
+- [x] Business detail renders profile + services + availability with skeletons
+- [x] Empty states on no-businesses and on 404 business detail
+- [x] All NativeWind; no `StyleSheet.create`, no `style={}`
+- [x] All routes have a navigation entry point
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+
+### Implementation Notes
+- `useCustomerApi.ts` uses plain `fetch` (not `useApi.request`) for all calls so `nextCursor` in the top-level response body is preserved. `useApi.request` only returns `json.data`, discarding pagination cursors.
+- `apps/mobile/app/_layout.tsx` updated: CUSTOMER users now route to `/(customer)` (was `/(tabs)`); `<Stack.Screen name="(customer)" />` added to root Stack.
+- Detail screen uses a cleanup flag (`cancelled`) in the `useEffect` to prevent state updates on unmount when `Promise.all` resolves after navigation.
+- Active services filter applied client-side on detail screen (`status === 'ACTIVE'`); avoids showing PAUSED/DELETED services to customers.
+- Service tap shows placeholder `Alert` — Phase 3d replaces with appointment request navigation.
+- Placeholder tabs in `(customer)/_layout.tsx` use `href: null` to hide them from the tab bar while keeping route structure ready for later phases.

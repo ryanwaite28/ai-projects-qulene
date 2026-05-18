@@ -16,7 +16,11 @@ export default function RootLayout() {
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (session && inAuthGroup) {
-      router.replace('/(tabs)');
+      if (session.role === 'BUSINESS') {
+        router.replace('/(business)');
+      } else {
+        router.replace('/(customer)');
+      }
     }
   }, [session, isLoading, segments, router]);
 
@@ -26,6 +30,8 @@ export default function RootLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(business)" />
+      <Stack.Screen name="(customer)" />
     </Stack>
   );
 }

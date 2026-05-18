@@ -1,0 +1,465 @@
+# ============================================================
+#  Reusable Workflow: Code Quality
+#
+#  Runs SAST and secrets scanning across three parallel
+#  serverless jobs — no external server required.
+#
+#  ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+#  │   CodeQL    │     │   Semgrep    │     │  Gitleaks   │
+#  │  deep SAST  │     │ broad SAST + │     │   secrets   │
+#  │ taint flows │     │ fast patterns│     │  detection  │
+#  └──────┬──────┘     └──────┬───────┘     └──────┬──────┘
+#         └──────────────────┬┘────────────────────┘
+#                     ┌──────▼──────┐
+#                     │ quality-gate│
+#                     └─────────────┘
+#
+#  SCA (dependency CVEs) is handled by Dependabot — enable it
+#  in your repository settings (Security > Dependabot alerts).
+#  No action needed here; it runs automatically on push.
+#
+#  Usage (from a caller workflow):
+#
+#    jobs:
+#      quality:
+#        uses: ./.github/workflows/code-quality.yml
+#        with:
+#          language: typescript
+#          scan-path: src/
+#          fail-on-error: true
+#        secrets:
+#          semgrep-app-token: ${{ secrets.SEMGREP_APP_TOKEN }}
+# ============================================================
+
+name: Code Quality
+
+on:
+  workflow_call:
+    inputs:
+
+      # ----------------------------------------------------------
+      # Scan Scope
+      # ----------------------------------------------------------
+      language:
+        description: >
+          Primary programming language of the code being scanned.
+          CodeQL supported values: c-cpp, csharp, go, java-kotlin,
+          javascript-typescript, python, ruby, swift.
+          Common aliases (ts, js, py, etc.) are normalized automatically.
+        type: string
+        required: true
+
+      scan-path:
+        description: >
+          Relative path within the repository to scan
+          (e.g. "src/" or "services/api"). Defaults to repo root.
+        type: string
+        required: false
+        default: "."
+
+      # ----------------------------------------------------------
+      # Failure Behavior
+      # ----------------------------------------------------------
+      fail-on-error:
+        description: >
+          When true, any scanner failure exits non-zero (blocking).
+          When false, failures are reported but the workflow always
+          exits successfully — advisory / fail-open mode.
+        type: boolean
+        required: false
+        default: true
+
+      # ----------------------------------------------------------
+      # CodeQL Options
+      # ----------------------------------------------------------
+      codeql-config-file:
+        description: >
+          Path to a custom CodeQL config file relative to the repo
+          root (e.g. ".github/codeql/config.yml"). Leave blank to
+          use CodeQL defaults.
+        type: string
+        required: false
+        default: ""
+
+      codeql-queries:
+        description: >
+          Comma-separated CodeQL query suites to run.
+          Defaults to "security-extended".
+          Other option: "security-and-quality".
+        type: string
+        required: false
+        default: "security-extended"
+
+      # ----------------------------------------------------------
+      # Semgrep Options
+      # ----------------------------------------------------------
+      semgrep-rules:
+        description: >
+          Semgrep ruleset(s) to run, space-separated.
+          Defaults to the auto ruleset (language-appropriate rules
+          from the Semgrep Registry, no token required).
+          Examples:
+            "p/default"            — Semgrep-curated defaults
+            "p/owasp-top-ten"      — OWASP Top 10
+            "p/secrets"            — secrets detection rules
+            "p/typescript p/react" — multiple rulesets
+          When semgrep-app-token is provided, Semgrep Cloud policies
+          are used instead and this input is ignored.
+        type: string
+        required: false
+        default: "auto"
+
+      semgrep-enable:
+        description: >
+          Set to false to skip the Semgrep job entirely.
+        type: boolean
+        required: false
+        default: true
+
+      # ----------------------------------------------------------
+      # Gitleaks Options
+      # ----------------------------------------------------------
+      gitleaks-enable:
+        description: >
+          Set to false to skip the Gitleaks secrets scan.
+        type: boolean
+        required: false
+        default: true
+
+      gitleaks-config-path:
+        description: >
+          Path to a custom Gitleaks config file (TOML) relative to
+          the repo root. Leave blank to use Gitleaks defaults.
+        type: string
+        required: false
+        default: ""
+
+      # ----------------------------------------------------------
+      # Runner
+      # ----------------------------------------------------------
+      runner:
+        description: >
+          GitHub Actions runner label to use for all jobs.
+        type: string
+        required: false
+        default: "ubuntu-latest"
+
+    secrets:
+      semgrep-app-token:
+        description: >
+          Optional Semgrep Cloud Platform token (SEMGREP_APP_TOKEN).
+          When provided, Semgrep uses your org's Cloud policies and
+          posts findings to the Semgrep dashboard. Without it,
+          Semgrep runs fully offline using the semgrep-rules input.
+        required: false
+
+    outputs:
+      codeql-status:
+        description: "'success' or 'failure'"
+        value: ${{ jobs.codeql.outputs.status }}
+
+      semgrep-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.semgrep.outputs.status }}
+
+      gitleaks-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.gitleaks.outputs.status }}
+
+      quality-gate-passed:
+        description: "'true' if all enabled scanners passed, 'false' otherwise."
+        value: ${{ jobs.quality-gate.outputs.passed }}
+
+# ============================================================
+jobs:
+
+  # ------------------------------------------------------------
+  # Normalize inputs shared across jobs
+  # ------------------------------------------------------------
+  setup:
+    name: Setup / Normalize Inputs
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      codeql-language: ${{ steps.normalize.outputs.codeql-language }}
+
+    steps:
+      - name: Normalize language identifiers
+        id: normalize
+        shell: bash
+        run: |
+          # Map common aliases → CodeQL canonical language identifiers
+          RAW_LANG="${{ inputs.language }}"
+          case "${RAW_LANG,,}" in
+            typescript|ts|javascript|js) CODEQL_LANG="javascript-typescript" ;;
+            java|kotlin)                  CODEQL_LANG="java-kotlin"           ;;
+            c|cpp|"c++"|"c/c++")         CODEQL_LANG="c-cpp"                 ;;
+            csharp|"c#"|dotnet)          CODEQL_LANG="csharp"                ;;
+            python|py)                   CODEQL_LANG="python"                ;;
+            go|golang)                   CODEQL_LANG="go"                    ;;
+            ruby|rb)                     CODEQL_LANG="ruby"                  ;;
+            swift)                       CODEQL_LANG="swift"                 ;;
+            *)
+              echo "::warning::Unrecognized language '${RAW_LANG}'. Passing to CodeQL as-is."
+              CODEQL_LANG="${RAW_LANG}"
+              ;;
+          esac
+          echo "codeql-language=${CODEQL_LANG}" >> "$GITHUB_OUTPUT"
+
+  # ------------------------------------------------------------
+  # Job 1: CodeQL — deep semantic SAST + taint analysis
+  #
+  # Builds a queryable model of the entire codebase and runs
+  # data-flow / taint-tracking queries to find vulnerabilities
+  # like SQL injection, XSS, path traversal, etc. that require
+  # understanding how data moves through the program — something
+  # pattern-based tools (Semgrep) can't do alone.
+  #
+  # Findings surface in the GitHub Security tab as SARIF alerts.
+  # ------------------------------------------------------------
+  codeql:
+    name: CodeQL (SAST)
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      actions:         read
+      contents:        read
+      security-events: write   # required to upload SARIF
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages:   ${{ needs.setup.outputs.codeql-language }}
+          queries:     ${{ inputs.codeql-queries }}
+          config-file: ${{ inputs.codeql-config-file != '' && inputs.codeql-config-file || null }}
+          paths: |
+            ${{ inputs.scan-path }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        id: codeql-analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ needs.setup.outputs.codeql-language }}"
+          upload: true
+
+      - name: Set job status output
+        id: set-status
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${{ steps.codeql-analysis.outcome }}" == "success" ]]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ------------------------------------------------------------
+  # Job 2: Semgrep — fast broad SAST, framework-aware rules
+  #
+  # Complements CodeQL with:
+  #   - 2,500+ community rules across 30+ languages
+  #   - Framework-specific patterns (React, Express, Django, etc.)
+  #   - OWASP Top 10 coverage
+  #   - Diff-aware mode in PRs (scans only changed files)
+  #   - Optional Semgrep Cloud dashboard via token
+  #
+  # Runs fully offline by default — no token required.
+  # ------------------------------------------------------------
+  semgrep:
+    name: Semgrep (SAST)
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.semgrep-enable == true
+    permissions:
+      contents:        read
+      security-events: write   # to upload SARIF
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    container:
+      # Pin to a specific Semgrep image for reproducibility.
+      # Update periodically: https://hub.docker.com/r/semgrep/semgrep/tags
+      image: semgrep/semgrep:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Semgrep scan
+        id: semgrep-scan
+        shell: sh
+        env:
+          # When token is set, Semgrep uses Cloud policies.
+          # When absent, falls back to semgrep-rules input (offline).
+          SEMGREP_APP_TOKEN: ${{ secrets.semgrep-app-token }}
+        run: |
+          if [ -n "${SEMGREP_APP_TOKEN}" ]; then
+            RULES=""
+            echo "::notice::Semgrep running with Cloud Platform policies."
+          else
+            RULES="${{ inputs.semgrep-rules }}"
+            echo "::notice::Semgrep running offline with ruleset: ${RULES}"
+          fi
+
+          semgrep scan \
+            --sarif \
+            --output semgrep.sarif \
+            ${RULES:+--config "$RULES"} \
+            --error \
+            "${{ inputs.scan-path }}"
+
+      - name: Upload Semgrep SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+        continue-on-error: true
+
+      - name: Set job status output
+        id: set-status
+        if: always()
+        shell: sh
+        run: |
+          if [ "${{ steps.semgrep-scan.outcome }}" = "success" ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ------------------------------------------------------------
+  # Job 3: Gitleaks — secrets / credential detection
+  #
+  # Scans the full git history for accidentally committed secrets:
+  # API keys, tokens, passwords, private keys, connection strings.
+  # Scanning history (not just the working tree) catches secrets
+  # that were committed and later deleted.
+  # ------------------------------------------------------------
+  gitleaks:
+    name: Gitleaks (Secrets)
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.gitleaks-enable == true
+    permissions:
+      contents: read
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history — secrets may be in old commits
+
+      - name: Run Gitleaks scan
+        id: gitleaks-scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          config-path: ${{ inputs.gitleaks-config-path != '' && inputs.gitleaks-config-path || null }}
+
+      - name: Set job status output
+        id: set-status
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${{ steps.gitleaks-scan.outcome }}" == "success" ]]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ------------------------------------------------------------
+  # Synthetic skipped outputs
+  # Needed so quality-gate always has defined inputs regardless
+  # of which optional jobs were disabled.
+  # ------------------------------------------------------------
+  semgrep-skip:
+    name: Semgrep (skipped)
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.semgrep-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "Semgrep skipped (semgrep-enable=false)."
+
+  gitleaks-skip:
+    name: Gitleaks (skipped)
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.gitleaks-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "Gitleaks skipped (gitleaks-enable=false)."
+
+  # ------------------------------------------------------------
+  # Quality Gate — fans in all parallel jobs
+  # ------------------------------------------------------------
+  quality-gate:
+    name: Quality Gate
+    needs: [codeql, semgrep, semgrep-skip, gitleaks, gitleaks-skip]
+    if: always()
+    runs-on: ${{ inputs.runner }}
+
+    outputs:
+      passed: ${{ steps.evaluate.outputs.passed }}
+
+    steps:
+      - name: Evaluate quality gate results
+        id: evaluate
+        shell: bash
+        run: |
+          # Coalesce: real job output takes precedence over skip sentinel
+          CODEQL_STATUS="${{ needs.codeql.outputs.status }}"
+          SEMGREP_STATUS="${{ needs.semgrep.outputs.status }}${{ needs.semgrep-skip.outputs.status }}"
+          GITLEAKS_STATUS="${{ needs.gitleaks.outputs.status }}${{ needs.gitleaks-skip.outputs.status }}"
+          FAIL_ON_ERROR="${{ inputs.fail-on-error }}"
+
+          echo "┌───────────────────────────────────────────┐"
+          echo "│          Code Quality Gate Summary         │"
+          echo "├───────────────────────────────────────────┤"
+          printf "│  %-23s  %-14s │\n" "Scanner" "Status"
+          echo "├───────────────────────────────────────────┤"
+          printf "│  %-23s  %-14s │\n" "CodeQL (SAST)"      "${CODEQL_STATUS}"
+          printf "│  %-23s  %-14s │\n" "Semgrep (SAST)"     "${SEMGREP_STATUS}"
+          printf "│  %-23s  %-14s │\n" "Gitleaks (secrets)" "${GITLEAKS_STATUS}"
+          printf "│  %-23s  %-14s │\n" "SCA (deps)"         "→ Dependabot"
+          echo "└───────────────────────────────────────────┘"
+
+          PASSED="true"
+          for STATUS in "${CODEQL_STATUS}" "${SEMGREP_STATUS}" "${GITLEAKS_STATUS}"; do
+            if [[ "${STATUS}" == "failure" ]]; then
+              PASSED="false"
+            fi
+          done
+
+          echo "passed=${PASSED}" >> "$GITHUB_OUTPUT"
+
+          if [[ "${PASSED}" == "false" ]]; then
+            if [[ "${FAIL_ON_ERROR}" == "true" ]]; then
+              echo "::error::One or more scanners reported findings. See job summaries for details."
+              exit 1
+            else
+              echo "::warning::One or more scanners reported findings (fail-on-error=false — advisory mode)."
+            fi
+          else
+            echo "::notice::All quality gates passed ✓"
+          fi

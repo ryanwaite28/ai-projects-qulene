@@ -8,7 +8,12 @@ export default defineConfig({
       AWS_ACCESS_KEY_ID: 'test',
       AWS_SECRET_ACCESS_KEY: 'test',
       DYNAMODB_ENDPOINT: 'http://localhost:4566',
+      SNS_ENDPOINT: 'http://localhost:4566',
       USERS_TABLE: 'qulene-local-users',
+      BUSINESS_PROFILES_TABLE: 'qulene-local-business-profiles',
+      SERVICES_TABLE: 'qulene-local-services',
+      AVAILABILITY_WINDOWS_TABLE: 'qulene-local-availability-windows',
+      SNS_TOPIC_ARN: 'arn:aws:sns:us-east-1:000000000000:qulene-local-events',
     },
   },
 });

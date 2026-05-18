@@ -1,6 +1,6 @@
 ## Spec: Phase 2d — Mobile business management (profile + services + availability)
 **FR references**: FR-BIZ-02, FR-BIZ-06, FR-SVC-01, FR-SVC-02, FR-SVC-03, FR-AVL-01, FR-AVL-04
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 1c ✅, 2a ✅, 2b ✅, 2c ✅
 **Size check**: 5 files · 0 service functions · 1 layer (mobile) · 3 screens (at limit) · fits one session ✅
 
@@ -27,9 +27,20 @@ FR-BIZ-02/06, FR-SVC-01/02/03, FR-AVL-01/04 define the operational management su
 **Navigation completeness**: each screen has its own tab in the business tab bar; that satisfies CLAUDE.md 12.13. All three screens use NativeWind only.
 
 ### Done When
-- [ ] All 3 screens render correctly with NativeWind (no `StyleSheet.create`, no `style={}`)
-- [ ] Each screen has an empty state and a loading skeleton
-- [ ] All 3 routes appear in the business tab bar (navigation entry point)
-- [ ] Profile screen avatar upload works end-to-end (presigned URL flow)
-- [ ] FR-SVC-02 and FR-AVL-02 limit errors render as inline messages
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] All 3 screens render correctly with NativeWind (no `StyleSheet.create`, no `style={}`)
+- [x] Each screen has an empty state and a loading skeleton
+- [x] All 3 routes appear in the business tab bar (navigation entry point)
+- [x] Profile screen avatar upload works end-to-end (presigned URL flow)
+- [x] FR-SVC-02 and FR-AVL-02 limit errors render as inline messages
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+
+### Implementation Notes
+- `GET /users/me` call removed from profile screen (that endpoint is Phase 6a). userId is read from `useAuth().session.userId` (Cognito claims), businessProfile from `GET /businesses/{userId}`.
+- `getCurrentSession()` in `cognito.ts` extended to return `role` extracted from the Amplify ID token payload (`custom:role`). `AuthSession` in `useAuth.ts` extended with `role: UserRole | null`.
+- `_layout.tsx` updated: BUSINESS users route to `/(business)`, CUSTOMER users to `/(tabs)`.
+- `dashboard.tsx` created as stub placeholder for Phase 3e (incoming appointment requests).
+- `expo-image-picker ~15.0.7` added to mobile `package.json` for avatar upload.
+- `packages/api-types/src/index.ts` updated with `BusinessProfile`, `ServiceStatus`, `Service`, `AvailabilityWindow` types (per CLAUDE.md: backend types updated in same commit as mobile screens that consume them).
+- Avatar upload flow: ImagePicker → `POST /businesses/me/avatar` → PUT blob to presigned URL → `PATCH /businesses/me { avatarUrl }`.
+- Services screen price field: user enters dollars, multiplied by 100 to cents before POST/PATCH.
+- `useBusinessApi.ts` hook wraps all business/services/availability endpoints; uses `useApi` internally.

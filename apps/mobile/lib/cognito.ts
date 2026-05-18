@@ -49,14 +49,15 @@ export async function cognitoSignOut(): Promise<void> {
   await amplifySignOut();
 }
 
-export async function getCurrentSession(): Promise<{ accessToken: string; userId: string } | null> {
+export async function getCurrentSession(): Promise<{ accessToken: string; userId: string; role: UserRole | null } | null> {
   try {
     const session = await fetchAuthSession();
     const token = session.tokens?.accessToken;
     if (!token) return null;
     const userId = token.payload?.sub as string | undefined;
     if (!userId) return null;
-    return { accessToken: token.toString(), userId };
+    const role = (session.tokens?.idToken?.payload?.['custom:role'] as string | undefined) as UserRole | null ?? null;
+    return { accessToken: token.toString(), userId, role };
   } catch {
     return null;
   }
