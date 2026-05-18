@@ -425,7 +425,7 @@ This causes the provider to ignore the profile and use the OIDC-injected environ
 | **S3** | qulene-{env}-frontend | Marketing SPA build artifacts (`ng build` output) |
 | **CloudFront** | qulene-{env}-app-cdn | CDN for Angular web app; terminates TLS; serves `app.qulene.com` |
 | **CloudFront** | qulene-{env}-cdn | CDN for marketing SPA; serves `qulene.com` and `www.qulene.com` |
-| **ACM** | `*.qulene.com` | Wildcard cert (pre-provisioned per env); covers both `app.*` and apex |
+| **ACM** | per-env wildcard cert | Prod: primary `qulene.com` + `*.qulene.com` (and `*.api/gateway/service/ui.qulene.com`). Dev: primary `dev.qulene.com` + `*.dev.qulene.com` (mirrored subdomain SANs). Covers apex + `app.*` + `api.*` for each env. |
 | **Route 53** | `qulene.com.` | Hosted zone; A-records: apex + www → marketing CloudFront; `app.*` → web app CloudFront; `api.*` → API Gateway |
 | **Cognito** | qulene-{env}-user-pool | App user authentication (JWT issuer) |
 | **Cognito** | qulene-{env}-user-pool-client | Mobile app client (no client secret) |
@@ -1015,10 +1015,10 @@ The following resources were provisioned before the project started and are shar
 | Resource | Status | SSM Key |
 | --- | --- | --- |
 | Route 53 hosted zone (`qulene.com`) | ✅ Active | `/qulene/hosted_zone_id` |
-| ACM cert `*.qulene.com` (dev) | ✅ Issued | `/qulene/dev/acm_certificate_arn` |
-| ACM cert `*.qulene.com` (prod) | ✅ Issued | `/qulene/prod/acm_certificate_arn` |
+| ACM cert `dev.qulene.com` + `*.dev.qulene.com` (dev) | ✅ Issued | `/qulene/dev/acm_certificate_arn` |
+| ACM cert `qulene.com` + `*.qulene.com` (prod) | ✅ Issued | `/qulene/prod/acm_certificate_arn` |
 | SES domain identity (`qulene.com`) | ✅ Verified | — |
-| SES email identity (`no-reply@qulene.com`) | ✅ Verified | — |
+| SES sender `no-reply@qulene.com` | ✅ Authorised via verified domain identity | — |
 | IAM role `GitHubActionsDevOpsDeployRole` | ✅ Exists (shared org role) | — |
 
 ### 9.4 Bootstrap Script

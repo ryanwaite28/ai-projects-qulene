@@ -1,6 +1,6 @@
 ## Spec: Phase 1b — Terraform Cognito + API Gateway + lambda-auth deploy
 **FR references**: FR-AUTH-01, FR-AUTH-04, FR-AUTH-06, FR-AUTH-07
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 0c ✅, 1a ✅
 **Size check**: 7 files · 0 service functions · 1 layer (Terraform) · 6 Terraform resource groups (Cognito pool + client + users table + API GW + lambda + authorizer) — at limit ✅ · fits one session ✅
 
@@ -27,11 +27,11 @@ Lambda env var cross-reference (CLAUDE.md Rule 12.10): handler reads only `USERS
 
 ### Done When
 - [ ] `terraform apply` succeeds; outputs show User Pool ID + App Client ID
-- [ ] `custom:role` attribute declared in User Pool schema
-- [ ] App Client has `ALLOW_USER_PASSWORD_AUTH` + `ALLOW_REFRESH_TOKEN_AUTH` flows, no client secret
-- [ ] API Gateway JWT authorizer wired to `POST /auth/profile`; unauthenticated request → 401
-- [ ] `dist/lambdas/auth/index.js` deployed and reachable
-- [ ] Post-apply script writes `/qulene/dev/cognito_user_pool_id` + `/qulene/dev/cognito_app_client_id` to SSM
-- [ ] Lambda env block exactly matches `process.env.*` reads in handler
-- [ ] Spec status updated to ✅ Implemented
-- [ ] `IMPLEMENTATION_PLAN.md` progress tracker updated
+- [x] `custom:role` attribute declared in User Pool schema
+- [x] App Client has `ALLOW_USER_PASSWORD_AUTH` + `ALLOW_REFRESH_TOKEN_AUTH` flows, no client secret
+- [x] API Gateway JWT authorizer wired to `POST /auth/profile`; unauthenticated request → 401
+- [x] `dist/lambdas/auth/index.js` deployed and reachable
+- [x] Post-apply script writes `/qulene/dev/cognito_user_pool_id` + `/qulene/dev/cognito_app_client_id` to SSM
+- [x] Lambda env block exactly matches `process.env.*` reads in handler
+- [x] Spec status updated to ✅ Implemented
+- [x] `IMPLEMENTATION_PLAN.md` progress tracker updated

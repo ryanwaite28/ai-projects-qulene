@@ -6,7 +6,7 @@
   "description": "Qulene backend — Lambda handlers, services, and DynamoDB table helpers",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc --noEmit && echo 'esbuild step added in Phase 1a'",
+    "build": "tsc --noEmit && tsx esbuild.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest"

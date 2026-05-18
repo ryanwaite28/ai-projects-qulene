@@ -1,6 +1,6 @@
 ## Spec: Phase 1c — Mobile auth (Cognito SDK + login + register)
 **FR references**: FR-AUTH-01, FR-AUTH-04, FR-AUTH-06
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 0b ✅, 1b ✅
 **Size check**: 6 files · 0 service functions · 1 layer (mobile) · 2 screens (login, register) · fits one session ✅
 
@@ -31,11 +31,11 @@ FR-AUTH-01 + FR-AUTH-04: users register and log in via Cognito. The mobile app i
 **Navigation completeness (CLAUDE.md 12.13)**: register screen has "Already have an account? Log in" link; login screen has "Don't have an account? Register" link.
 
 ### Done When
-- [ ] Register (BUSINESS or CUSTOMER) → user record visible in DynamoDB
-- [ ] Login persists session across app restarts (SecureStore)
-- [ ] 401 response clears token + redirects to `/login`
-- [ ] Both screens render correctly via NativeWind (no `StyleSheet.create` or inline `style={}`)
-- [ ] Both routes have at least one navigation entry point
-- [ ] `EXPO_PUBLIC_*` env vars used (no hardcoded URLs/IDs)
-- [ ] Spec status updated to ✅ Implemented
-- [ ] `IMPLEMENTATION_PLAN.md` progress tracker updated
+- [x] Register (BUSINESS or CUSTOMER) → user record visible in DynamoDB
+- [x] Login persists session across app restarts (SecureStore)
+- [x] 401 response clears token + redirects to `/login`
+- [x] Both screens render correctly via NativeWind (no `StyleSheet.create` or inline `style={}`)
+- [x] Both routes have at least one navigation entry point
+- [x] `EXPO_PUBLIC_*` env vars used (no hardcoded URLs/IDs)
+- [x] Spec status updated to ✅ Implemented
+- [x] `IMPLEMENTATION_PLAN.md` progress tracker updated

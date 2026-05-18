@@ -18,7 +18,7 @@ set -euo pipefail
 AWS_PROFILE="rmw-llc"
 AWS_REGION="us-east-1"
 GITHUB_ORG="ryanwaite28"
-GITHUB_REPO="ryanwaite28/qulene"
+GITHUB_REPO="ryanwaite28/ai-projects-qulene"
 CI_ROLE_NAME="GitHubActionsDevOpsDeployRole"
 SES_DOMAIN="qulene.com"
 SES_SENDER="no-reply@qulene.com"
@@ -252,16 +252,26 @@ verify_pre_provisioned() {
   success "Route 53 hosted zone: $HZ_ID"
   HOSTED_ZONE_ID="$HZ_ID"
 
-  # ACM certs per env
+  # ACM certs per env — env distinguished by primary DomainName:
+  #   prod cert:  DomainName == "qulene.com"      (SANs cover *.qulene.com)
+  #   dev  cert:  DomainName == "dev.qulene.com"  (SANs cover *.dev.qulene.com)
+  local cert_list
+  cert_list=$(aws_prod acm list-certificates --certificate-statuses ISSUED --output json)
   for ENV in "${ENVS[@]}"; do
-    CERT_ARN=$(aws_prod acm list-certificates --certificate-statuses ISSUED --output json \
-      | jq -r --arg dom "*.${SES_DOMAIN}" --arg env "$ENV" \
-        ".CertificateSummaryList[] | select(.DomainName == \$dom) | .CertificateArn" \
+    local primary_domain
+    if [ "$ENV" = "prod" ]; then
+      primary_domain="$SES_DOMAIN"
+    else
+      primary_domain="${ENV}.${SES_DOMAIN}"
+    fi
+    CERT_ARN=$(echo "$cert_list" \
+      | jq -r --arg dom "$primary_domain" \
+        '.CertificateSummaryList[] | select(.DomainName == $dom) | .CertificateArn' \
       | head -1)
     if [ -z "$CERT_ARN" ]; then
-      warn "ACM cert *.${SES_DOMAIN} not found in $ENV — pre-provisioning required"
+      warn "ACM cert for $primary_domain not found ($ENV) — pre-provisioning required"
     else
-      success "ACM cert ($ENV): $CERT_ARN"
+      success "ACM cert ($ENV, $primary_domain): $CERT_ARN"
       eval "CERT_ARN_${ENV}=$CERT_ARN"
     fi
   done
@@ -281,8 +291,11 @@ verify_pre_provisioned() {
     | jq -r ".VerificationAttributes.\"$SES_SENDER\".VerificationStatus // empty")
   if [ "$SES_EMAIL_VERIFIED" = "Success" ]; then
     success "SES email identity: $SES_SENDER (verified)"
+  elif [ "$SES_DOMAIN_VERIFIED" = "Success" ]; then
+    # Domain-level verification authorises any sender on that domain — sufficient for SES.
+    info "SES email $SES_SENDER not separately verified, but domain $SES_DOMAIN is — OK"
   else
-    warn "SES email $SES_SENDER not verified — pre-provisioning required"
+    warn "SES email $SES_SENDER not verified and domain $SES_DOMAIN not verified — pre-provisioning required"
   fi
 
   # IAM role
@@ -409,6 +422,13 @@ setup_github_secrets_and_envs() {
   if ! gh auth status >/dev/null 2>&1; then
     warn "gh CLI present but not authenticated — skipping GitHub setup"
     MANUAL_STEPS+=("Run: gh auth login")
+    return
+  fi
+
+  if ! gh repo view "$GITHUB_REPO" >/dev/null 2>&1; then
+    warn "GitHub repo $GITHUB_REPO does not exist — skipping GitHub secrets/environments"
+    MANUAL_STEPS+=("Create the repo: gh repo create $GITHUB_REPO --public --source=. --remote=origin --push")
+    MANUAL_STEPS+=("Then re-run: bash infra/scripts/bootstrap.sh")
     return
   fi
 

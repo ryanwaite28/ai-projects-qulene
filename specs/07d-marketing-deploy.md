@@ -35,7 +35,7 @@ module "marketing" {
 - TTL: default 1 day; min 0; max 1 year
 - Viewer protocol policy: redirect-to-https
 - Aliases: passed by caller
-- Cert: wildcard `*.qulene.com` from SSM (covers both apex and `www`)
+- Cert: per-env cert from SSM (`/qulene/{env}/acm_certificate_arn`). Prod cert covers `qulene.com` + `*.qulene.com` (so apex + `www`); dev cert covers `dev.qulene.com` + `*.dev.qulene.com` (so dev apex + `www.dev`)
 
 **Deploy script**: idempotent; reads CloudFront distribution ID from SSM at `/qulene/{env}/marketing_cloudfront_distribution_id` (written by Terraform output post-apply). Exit code reflects either build or sync failure.
 

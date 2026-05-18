@@ -258,11 +258,11 @@ The notification Lambda:
 - **Session estimate**: 1
 - **Key files**: `backend/src/services/auth.service.ts`, `backend/src/db/dynamo.client.ts`, `backend/src/db/tables/users.table.ts`, `backend/src/handlers/auth.handler.ts`, `backend/src/middleware/auth.middleware.ts`, `backend/esbuild.config.ts`, `backend/src/services/__tests__/auth.service.test.ts`, `backend/tests/integration/auth.handler.test.ts`
 - **Done When**:
-  - [ ] `POST /auth/profile` creates a `users` record from Cognito claims (handler extracts `sub` + `custom:role`)
-  - [ ] Idempotent: re-calling `POST /auth/profile` returns the existing record
-  - [ ] Unit tests pass for `auth.service.ts` (happy + 422 wrong role + 409 already exists scenarios)
-  - [ ] Integration test against MiniStack passes
-  - [ ] `dist/lambdas/auth/index.js` produced by `npm run build`
+  - [x] `POST /auth/profile` creates a `users` record from Cognito claims (handler extracts `sub` + `custom:role`)
+  - [x] Idempotent: re-calling `POST /auth/profile` returns the existing record
+  - [x] Unit tests pass for `auth.service.ts` (happy + 422 wrong role + 409 already exists scenarios)
+  - [x] Integration test against MiniStack passes
+  - [x] `dist/lambdas/auth/index.js` produced by `npm run build`
 
 #### 1b — Terraform Cognito + API Gateway + lambda-auth deploy
 
@@ -271,11 +271,11 @@ The notification Lambda:
 - **Session estimate**: 1
 - **Key files**: `infra/terraform/modules/cognito/{main.tf,variables.tf,outputs.tf}`, `infra/terraform/modules/dynamodb-users/main.tf`, `infra/terraform/modules/api-gateway/main.tf`, `infra/terraform/modules/lambda/main.tf`, `infra/terraform/envs/dev/main.tf` (modify), `infra/scripts/post-apply-cognito.sh`
 - **Done When**:
-  - [ ] Cognito User Pool + App Client provisioned; `custom:role` attribute in schema
-  - [ ] API Gateway v2 + Cognito JWT authorizer wired to `POST /auth/profile`
-  - [ ] `lambda-auth` deployed and reachable; `dist/lambdas/auth/index.js` packaged + uploaded
-  - [ ] Post-apply script writes `/qulene/dev/cognito_user_pool_id` + `/qulene/dev/cognito_app_client_id` to SSM
-  - [ ] `terraform validate` exits 0; `terraform plan` shows no drift after apply
+  - [x] Cognito User Pool + App Client provisioned; `custom:role` attribute in schema
+  - [x] API Gateway v2 + Cognito JWT authorizer wired to `POST /auth/profile`
+  - [x] `lambda-auth` deployed and reachable; `dist/lambdas/auth/index.js` packaged + uploaded
+  - [x] Post-apply script writes `/qulene/dev/cognito_user_pool_id` + `/qulene/dev/cognito_app_client_id` to SSM
+  - [x] `terraform validate` exits 0; `terraform plan` shows no drift after apply
 
 #### 1c — Mobile auth (Cognito SDK + login + register)
 
@@ -284,11 +284,11 @@ The notification Lambda:
 - **Session estimate**: 1
 - **Key files**: `apps/mobile/lib/cognito.ts`, `apps/mobile/hooks/useAuth.ts`, `apps/mobile/hooks/useApi.ts`, `apps/mobile/app/(auth)/{login.tsx,register.tsx}`, `apps/mobile/app/_layout.tsx`
 - **Done When**:
-  - [ ] Register with email/password/role → Cognito `signUp` → mobile calls `POST /auth/profile` to sync DynamoDB user record
-  - [ ] Login with email/password → Cognito `signIn` → token in Expo SecureStore
-  - [ ] `useApi` injects `Authorization: Bearer <token>` on every request
-  - [ ] `_layout.tsx` redirects unauthenticated users to `/login`
-  - [ ] Both screens use NativeWind styling; both have at least one navigation entry point
+  - [x] Register with email/password/role → Cognito `signUp` → mobile calls `POST /auth/profile` to sync DynamoDB user record
+  - [x] Login with email/password → Cognito `signIn` → token in Expo SecureStore
+  - [x] `useApi` injects `Authorization: Bearer <token>` on every request
+  - [x] `_layout.tsx` redirects unauthenticated users to `/login`
+  - [x] Both screens use NativeWind styling; both have at least one navigation entry point
 
 ### Phase 2 — Business Profile & Services
 
@@ -614,9 +614,9 @@ and reported your findings.
 | 0a | Root + Backend + Packages workspace | `specs/00a-scaffold-root.md` | ✅ Complete | 2026-05-17 |
 | 0b | Frontend app stubs + Local stack | `specs/00b-scaffold-frontend-local.md` | ✅ Complete | 2026-05-17 |
 | 0c | Terraform skeleton + CI workflow | `specs/00c-scaffold-terraform-ci.md` | ✅ Complete | 2026-05-17 |
-| 1a | Backend auth | `specs/01a-auth-backend.md` | ⬜ Not Started | — |
-| 1b | Terraform Cognito + API Gateway + lambda-auth | `specs/01b-auth-terraform.md` | ⬜ Not Started | — |
-| 1c | Mobile auth | `specs/01c-auth-mobile.md` | ⬜ Not Started | — |
+| 1a | Backend auth | `specs/01a-auth-backend.md` | ✅ Complete | 2026-05-17 |
+| 1b | Terraform Cognito + API Gateway + lambda-auth | `specs/01b-auth-terraform.md` | ✅ Complete | 2026-05-17 |
+| 1c | Mobile auth | `specs/01c-auth-mobile.md` | ✅ Complete | 2026-05-18 |
 | 2a | Backend business profile | `specs/02a-business-profile-backend.md` | ⬜ Not Started | — |
 | 2b | Backend services | `specs/02b-services-backend.md` | ⬜ Not Started | — |
 | 2c | Backend availability windows | `specs/02c-availability-backend.md` | ⬜ Not Started | — |

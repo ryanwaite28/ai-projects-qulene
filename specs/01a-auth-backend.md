@@ -1,6 +1,6 @@
 ## Spec: Phase 1a — Backend auth (service + users table + handler + esbuild)
 **FR references**: FR-AUTH-01, FR-AUTH-02, FR-AUTH-06, FR-AUTH-07
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 0a ✅
 **Size check**: 8 files · 1 service function group (createOrSyncUserProfile) · 1 layer (backend) · fits one session ✅
 
@@ -34,10 +34,10 @@ FR-AUTH-01 requires storing app-level user data (firstName, lastName, role, unre
 **Note on FR-AUTH-02 (email uniqueness)**: enforced by Cognito itself (User Pool config in Phase 1b). The DynamoDB `email-index` GSI exists for future lookup needs (e.g., admin tooling) but the unique constraint is upstream.
 
 ### Done When
-- [ ] Unit tests pass: happy + idempotent re-call + missing claim + invalid role
-- [ ] Integration test passes against MiniStack
-- [ ] esbuild produces `dist/lambdas/auth/index.js`
-- [ ] Handler is thin: only `extractClaims`, shape validation, service call, envelope wrap
-- [ ] All DynamoDB calls go through `users.table.ts`; no DocumentClient calls in `auth.service.ts`
-- [ ] Spec status updated to ✅ Implemented
-- [ ] `IMPLEMENTATION_PLAN.md` progress tracker updated
+- [x] Unit tests pass: happy + idempotent re-call + missing claim + invalid role
+- [x] Integration test passes against MiniStack
+- [x] esbuild produces `dist/lambdas/auth/index.js`
+- [x] Handler is thin: only `extractClaims`, shape validation, service call, envelope wrap
+- [x] All DynamoDB calls go through `users.table.ts`; no DocumentClient calls in `auth.service.ts`
+- [x] Spec status updated to ✅ Implemented
+- [x] `IMPLEMENTATION_PLAN.md` progress tracker updated

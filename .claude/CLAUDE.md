@@ -239,10 +239,10 @@ Document the outcome as a single line in your session notes: `✅ Phase N kickof
 | **CI/CD IAM role** | `GitHubActionsDevOpsDeployRole` — shared org-level role; trust policy covers all repos in the `ryanwaite28` GitHub org; already exists in the shared account; **do not create or modify it** |
 | **CI/CD auth** | GitHub Actions OIDC — `id-token: write` + `aws-actions/configure-aws-credentials@v4` with `role-to-assume: ${{ secrets.AWS_ROLE_ARN }}`; `AWS_ROLE_ARN` = ARN of `GitHubActionsDevOpsDeployRole` |
 | **IaC** | Terraform only — not CDK, not SAM, not Amplify |
-| **GitHub repo** | `ryanwaite28/qulene` |
+| **GitHub repo** | `ryanwaite28/ai-projects-qulene` |
 | **Domain** | `qulene.com` — hosted zone created and configured; NS delegation complete |
-| **ACM certs** | Wildcard `*.qulene.com` — provisioned for both `dev` and `prod`; ARNs stored in SSM (see Pre-Provisioned Infrastructure) |
-| **SES** | Domain identity `qulene.com` and email identity `no-reply@qulene.com` — verified; DKIM records in Route 53; ready for sending |
+| **ACM certs** | Two pre-provisioned per-env wildcard-style certs: **prod** = `qulene.com` + `*.qulene.com` (plus `*.api/gateway/service/ui.qulene.com`); **dev** = `dev.qulene.com` + `*.dev.qulene.com` (mirrored subdomain SANs). ARNs stored in SSM (see Pre-Provisioned Infrastructure). Bootstrap maps env → cert by primary `DomainName`: `qulene.com` → prod, `dev.qulene.com` → dev. |
+| **SES** | Domain identity `qulene.com` verified; DKIM records in Route 53; ready for sending. Sender `no-reply@qulene.com` is authorised through the verified domain identity — no separate email-identity verification is required. |
 | **SSM + Secrets Manager** | Shared infra values (ACM ARNs, hosted zone ID, Cognito pool IDs) stored in SSM Parameter Store; runtime secrets (Cognito client secret, SES config, SNS ARNs) stored in Secrets Manager. Terraform reads SSM at plan time via `data "aws_ssm_parameter"` |
 
 ---
@@ -270,7 +270,7 @@ Do not propose alternatives to any of the following. If a suggestion contradicts
 | **`TF_VAR_aws_profile=""`** | Set in all CI Terraform steps to override the `rmw-llc` local default and fall back to OIDC environment credentials. |
 | **SSM Parameter Store** | Shared infra values that Terraform reads at plan time (ACM cert ARNs, hosted zone ID, Cognito pool IDs) are stored as SSM parameters under `/qulene/{env}/...`. Terraform reads them via `data "aws_ssm_parameter"`. Never hardcode ARNs or IDs in `.tf` files. |
 | **Secrets Manager** | Runtime secrets (SNS topic ARN, SES config, Cognito client config) stored in `qulene-{env}-secrets`. Lambda handlers read them at cold start. Never pass secrets as Terraform outputs or store them in SSM. |
-| **Pre-provisioned: Domain + Certs + SES** | `qulene.com` hosted zone, `*.qulene.com` ACM certs (dev + prod), and SES domain/email identities are **already provisioned and verified**. `bootstrap.sh` verifies their presence but does not create or modify them. Terraform reads their ARNs/IDs from SSM. |
+| **Pre-provisioned: Domain + Certs + SES** | `qulene.com` hosted zone, per-env ACM certs (prod = `qulene.com` + `*.qulene.com`; dev = `dev.qulene.com` + `*.dev.qulene.com`), and SES domain identity `qulene.com` are **already provisioned and verified**. The `no-reply@qulene.com` sender inherits authorisation from the verified domain — no separate email-identity verification is required. `bootstrap.sh` verifies their presence but does not create or modify them. Terraform reads their ARNs/IDs from SSM. |
 | **npm workspaces** | Monorepo tooling. `apps/mobile`, `apps/web-app`, `apps/marketing`, `packages/api-types`, `packages/shared-utils`, `backend/`. |
 | **Expo Router** | File-based routing in the mobile app. No React Navigation. |
 | **NativeWind** | All mobile UI styling. No StyleSheet.create, no inline styles. |
@@ -726,10 +726,10 @@ These were set up before the project started and are shared/stable. `bootstrap.s
 | Resource | Detail |
 | --- | --- |
 | **Route 53 hosted zone** | `qulene.com` — fully configured, NS delegation complete |
-| **ACM cert (dev)** | `*.qulene.com` — issued, ARN stored in SSM at `/qulene/dev/acm_certificate_arn` |
-| **ACM cert (prod)** | `*.qulene.com` — issued, ARN stored in SSM at `/qulene/prod/acm_certificate_arn` |
+| **ACM cert (dev)** | Primary `dev.qulene.com` + SANs `*.dev.qulene.com`, `*.api.dev.qulene.com`, `*.gateway.dev.qulene.com`, `*.service.dev.qulene.com`, `*.ui.dev.qulene.com` — issued, ARN stored in SSM at `/qulene/dev/acm_certificate_arn` |
+| **ACM cert (prod)** | Primary `qulene.com` + SANs `*.qulene.com`, `*.api.qulene.com`, `*.gateway.qulene.com`, `*.service.qulene.com`, `*.ui.qulene.com` — issued, ARN stored in SSM at `/qulene/prod/acm_certificate_arn` |
 | **SES domain identity** | `qulene.com` — verified, DKIM records in Route 53 |
-| **SES email identity** | `no-reply@qulene.com` — verified and ready for sending |
+| **SES sender** | `no-reply@qulene.com` — authorised via the verified domain identity (no separate email-identity verification required) |
 | **`GitHubActionsDevOpsDeployRole`** | Shared org-level IAM role — trust policy covers `ryanwaite28/*`; already exists, never touch it |
 
 ### What bootstrap.sh provisions (idempotent — safe to re-run)
