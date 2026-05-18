@@ -18,7 +18,9 @@ on:
 
 permissions:
   contents: read
-  id-token: write   # required for OIDC AWS auth in future deploy steps
+  id-token: write          # required for OIDC AWS auth in future deploy steps
+  security-events: write   # required for SARIF uploads (CodeQL, Semgrep, OSV, Scorecard)
+  pull-requests: write     # required for dependency-review PR comment
 
 jobs:
   lint-typecheck:
@@ -62,6 +64,20 @@ jobs:
           else
             echo "apps/web-app not yet scaffolded; skipping ng lint (Phase 8a will activate this)."
           fi
+
+  security:
+    name: Security & Quality Scanning
+    uses: ./.github/workflows/security-quality.yml
+    with:
+      language: typescript
+      fail-on-error: false   # advisory mode — reports findings without blocking CI
+    secrets: inherit
+    permissions:
+      actions:         read
+      contents:        read
+      id-token:        write   # required for OpenSSF Scorecard attestation
+      security-events: write   # required for SARIF uploads to GitHub Security tab
+      pull-requests:   write   # required for dependency-review PR comment
 
   ng-lint-marketing:
     name: ng lint (apps/marketing — placeholder until 7b)
