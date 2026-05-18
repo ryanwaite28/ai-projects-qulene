@@ -1,6 +1,6 @@
 ## Spec: Phase 5a — Terraform SQS + SNS + DLQ + lambda-notification IAM
 **FR references**: (infrastructure for FR-EMAIL-01 through FR-EMAIL-07 and FR-NOTIF-06)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 0c ✅
 **Size check**: 3 files · 0 service functions · 1 layer (Terraform) · 5 new Terraform resource groups (SNS topic, SQS queue, DLQ, subscription, Lambda + event source mapping + IAM) ≤ 6 limit ✅
 
@@ -27,10 +27,10 @@ export const handler = async () => ({ statusCode: 200 });
 DLQ alarming is deferred to Phase 9b (which adds the CloudWatch alarm on `ApproximateNumberOfMessages > 0`).
 
 ### Done When
-- [ ] `terraform apply` provisions SNS topic, SQS queue, DLQ, subscription, Lambda + ESM, IAM
-- [ ] Visibility timeout: 120s; redrive maxReceiveCount: 3
-- [ ] SNS→SQS subscription does NOT use raw message delivery (envelope preserved)
-- [ ] IAM grants exactly the permissions listed (no wildcards beyond what's listed)
-- [ ] `SNS_TOPIC_ARN` written to `qulene-{env}-secrets`
-- [ ] Stub handler deploys and ESM successfully attaches
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `terraform apply` provisions SNS topic, SQS queue, DLQ, subscription, Lambda + ESM, IAM
+- [x] Visibility timeout: 120s; redrive maxReceiveCount: 3
+- [x] SNS→SQS subscription does NOT use raw message delivery (envelope preserved)
+- [x] IAM grants exactly the permissions listed (no wildcards beyond what's listed)
+- [ ] `SNS_TOPIC_ARN` written to `qulene-{env}-secrets` (deferred to Phase 9c post-apply script)
+- [x] Stub handler deploys and ESM successfully attaches
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

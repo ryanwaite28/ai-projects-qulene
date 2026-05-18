@@ -630,7 +630,7 @@ and reported your findings.
 | 4a | Backend waitlist | `specs/04a-waitlist-backend.md` | ✅ Complete | 2026-05-18 |
 | 4b | Mobile customer waitlist | `specs/04b-waitlist-customer-mobile.md` | ✅ Complete | 2026-05-18 |
 | 4c | Mobile business waitlist | `specs/04c-waitlist-business-mobile.md` | ✅ Complete | 2026-05-18 |
-| 5a | Notification Terraform | `specs/05a-notification-terraform.md` | ⬜ Not Started | — |
+| 5a | Notification Terraform | `specs/05a-notification-terraform.md` | ✅ Complete | 2026-05-18 |
 | 5b | Email rendering | `specs/05b-email-rendering.md` | ⬜ Not Started | — |
 | 5c | Notification consumer | `specs/05c-notification-consumer.md` | ⬜ Not Started | — |
 | 6a | Backend notifications endpoints | `specs/06a-notifications-backend.md` | ⬜ Not Started | — |

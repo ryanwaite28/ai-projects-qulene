@@ -768,6 +768,39 @@ resource "aws_apigatewayv2_route" "patch_businesses_me_appointments_noshow" {
 }
 
 ###############################################################################
+# Phase 5a — SQS notification queue + DLQ + SNS subscription
+###############################################################################
+
+module "sqs" {
+  source = "../../modules/sqs"
+
+  environment   = var.environment
+  sns_topic_arn = aws_sns_topic.events.arn
+}
+
+###############################################################################
+# Phase 5a — Lambda: notification (SQS consumer — stub handler, real in 5c)
+###############################################################################
+
+module "lambda_notification" {
+  source = "../../modules/lambda-notification"
+
+  environment                     = var.environment
+  aws_region                      = var.aws_region
+  queue_arn                       = module.sqs.queue_arn
+  appointment_requests_table_name = module.dynamodb_appointment_requests.table_name
+  appointment_requests_table_arn  = module.dynamodb_appointment_requests.table_arn
+  users_table_name                = module.dynamodb_users.table_name
+  users_table_arn                 = module.dynamodb_users.table_arn
+  business_profiles_table_name    = module.dynamodb_business_profiles.table_name
+  business_profiles_table_arn     = module.dynamodb_business_profiles.table_arn
+  services_table_name             = module.dynamodb_services.table_name
+  services_table_arn              = module.dynamodb_services.table_arn
+  waitlist_entries_table_name     = module.dynamodb_waitlist_entries.table_name
+  waitlist_entries_table_arn      = module.dynamodb_waitlist_entries.table_arn
+}
+
+###############################################################################
 # Outputs
 ###############################################################################
 

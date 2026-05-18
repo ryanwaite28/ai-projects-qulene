@@ -29,7 +29,7 @@ declare module 'react-native' {
   interface ActivityIndicatorProps {
     className?: string;
   }
-  interface FlatListProps<ItemT> {
+  interface FlatListProps<_ItemT> {
     className?: string;
   }
 }

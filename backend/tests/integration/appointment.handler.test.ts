@@ -29,7 +29,7 @@ const APT_TABLE = process.env.APPOINTMENT_REQUESTS_TABLE ?? 'qulene-local-appoin
 const NOTIF_TABLE = process.env.NOTIFICATIONS_TABLE ?? 'qulene-local-notifications';
 const USERS_TABLE = process.env.USERS_TABLE ?? 'qulene-local-users';
 const SVC_TABLE = process.env.SERVICES_TABLE ?? 'qulene-local-services';
-const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN ?? 'arn:aws:sns:us-east-1:000000000000:qulene-local-events';
+const _SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN ?? 'arn:aws:sns:us-east-1:000000000000:qulene-local-events';
 
 let idCounter = 0;
 const uid = () => `integ-apt-${Date.now()}-${++idCounter}`;

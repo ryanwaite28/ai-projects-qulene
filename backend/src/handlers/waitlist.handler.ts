@@ -1,8 +1,6 @@
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-import type { SNSClient } from '@aws-sdk/client-sns';
 import { createDynamoClient } from '../db/dynamo.client.js';
-import { createSnsClient } from '../clients/sns.client.js';
 import { extractClaims, requireRole, type ParsedClaims } from '../middleware/auth.middleware.js';
 import type { UserRole } from '../types/index.js';
 import {
@@ -17,9 +15,7 @@ import {
 } from '../services/waitlist.service.js';
 
 let _dynamo: DynamoDBDocumentClient | undefined;
-let _sns: SNSClient | undefined;
 const getDynamo = (): DynamoDBDocumentClient => (_dynamo ??= createDynamoClient());
-const getSns = (): SNSClient => (_sns ??= createSnsClient());
 
 const VALID_ROLES = new Set<string>(['BUSINESS', 'CUSTOMER']);
 
