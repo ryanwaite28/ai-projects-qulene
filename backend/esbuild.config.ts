@@ -6,6 +6,7 @@ const entries: Record<string, string> = {
   businesses: 'src/handlers/business.handler.ts',
   services: 'src/handlers/service.handler.ts',
   appointments: 'src/handlers/appointment.handler.ts',
+  waitlist: 'src/handlers/waitlist.handler.ts',
 };
 
 await Promise.all(

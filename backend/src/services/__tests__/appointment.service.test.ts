@@ -27,6 +27,7 @@ vi.mock('../../db/tables/services.table.js');
 vi.mock('../../db/tables/notifications.table.js');
 vi.mock('../../db/tables/users.table.js');
 vi.mock('../../clients/sns.client.js');
+vi.mock('../waitlist.service.js');
 
 const mockGetRequestById = vi.mocked(apptTable.getRequestById);
 const mockGetByIdempotency = vi.mocked(apptTable.getRequestByIdempotencyKey);

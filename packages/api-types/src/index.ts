@@ -57,6 +57,7 @@ export interface AvailabilityWindow {
 
 export type { AppointmentStatus, AppointmentRequest } from './appointment.types.js';
 export type { NotificationType, Notification } from './notification.types.js';
+export type { WaitlistStatus, WaitlistEntry } from './waitlist.types.js';
 
 export interface ApiError {
   code: string;

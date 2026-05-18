@@ -1,6 +1,6 @@
 ## Spec: Phase 4c — Mobile business waitlist view
 **FR references**: FR-WAIT-05
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 2d ✅, 4a ✅
 **Size check**: 1 file · 0 service functions · 1 layer · 1 screen · fits one session ✅
 
@@ -22,9 +22,9 @@ FR-WAIT-05: businesses need visibility into who is waiting for each of their ser
 **Navigation completeness**: entry point from each service row in the Services screen.
 
 ### Done When
-- [ ] Each service row in business Services screen shows "View Waitlist (N)"
-- [ ] Tapping navigates to the per-service waitlist screen
-- [ ] Entries listed in queue order (1, 2, 3, ...)
-- [ ] Empty state + loading skeleton present
-- [ ] All NativeWind
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Each service row in business Services screen shows "View Waitlist (N)"
+- [x] Tapping navigates to the per-service waitlist screen
+- [x] Entries listed in queue order (1, 2, 3, ...)
+- [x] Empty state + loading skeleton present
+- [x] All NativeWind
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

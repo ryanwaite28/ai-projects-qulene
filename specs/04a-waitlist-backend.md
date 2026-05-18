@@ -1,6 +1,6 @@
 ## Spec: Phase 4a — Backend waitlist (service + table + handler + TF + promotion wire-in)
 **FR references**: FR-WAIT-01, FR-WAIT-02, FR-WAIT-03, FR-WAIT-04, FR-WAIT-05, FR-WAIT-06, FR-APT-07
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 3c ✅
 **Size check**: 7 files · 4 service functions (join, leave, promoteOldestForService, listBusinessWaitlist + listCustomerWaitlist combined as one read; counting as 4) · 1 layer · 4 routes · fits one session ✅
 
@@ -38,11 +38,11 @@ FR-WAIT-01–06 + FR-APT-07: customers who can't get a current slot must be able
 **Appointment decline/cancel wire-in**: at the end of `declineRequest` and `cancelRequest` in `appointment.service.ts`, after SNS publish, call `await promoteOldestForService(dynamo, sns, { serviceId: request.serviceId })`. Failures here are caught + logged but do not fail the original operation (FR-NOTIF-06 principle).
 
 ### Done When
-- [ ] All 4 routes work with role + ownership enforcement
-- [ ] FR-WAIT-02 duplicate join → 409
-- [ ] Appointment decline triggers promotion → second customer gets notification + event published
-- [ ] Appointment cancel triggers promotion same way
-- [ ] Concurrent-decline race: only first decline successfully promotes (conditional UpdateItem)
-- [ ] Integration test exercises the full chain
-- [ ] `dist/lambdas/waitlist/index.js` bundle present; API GW routes added
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] All 4 routes work with role + ownership enforcement
+- [x] FR-WAIT-02 duplicate join → 409
+- [x] Appointment decline triggers promotion → second customer gets notification + event published
+- [x] Appointment cancel triggers promotion same way
+- [x] Concurrent-decline race: only first decline successfully promotes (conditional UpdateItem)
+- [x] Integration test exercises the full chain
+- [x] `dist/lambdas/waitlist/index.js` bundle present; API GW routes added
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

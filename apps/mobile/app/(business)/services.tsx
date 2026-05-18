@@ -9,9 +9,10 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useBusinessApi } from '../../hooks/useBusinessApi';
-import { ApiError } from '../../hooks/useApi';
-import type { Service } from '@qulene/api-types';
+import { useApi, ApiError } from '../../hooks/useApi';
+import type { Service, WaitlistEntry } from '@qulene/api-types';
 
 function SkeletonBox({ w, h }: { w: string; h: string }) {
   return <View className={`bg-gray-200 rounded ${w} ${h}`} />;
@@ -48,11 +49,14 @@ function formatPrice(cents: number) {
 }
 
 export default function ServicesScreen() {
+  const router = useRouter();
   const { fetchServices, createService, updateService, deleteService } = useBusinessApi();
+  const { request } = useApi();
 
   const [isLoading, setIsLoading] = useState(true);
   const [services, setServices] = useState<Service[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [waitlistCounts, setWaitlistCounts] = useState<Record<string, number>>({});
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -63,18 +67,32 @@ export default function ServicesScreen() {
   const setField = (key: keyof ServiceForm) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const loadWaitlistCounts = useCallback(async (items: Service[]) => {
+    const counts: Record<string, number> = {};
+    for (const svc of items.filter((s) => s.status !== 'DELETED')) {
+      try {
+        const entries = await request<WaitlistEntry[]>(`/businesses/me/waitlist/${svc.serviceId}`);
+        counts[svc.serviceId] = entries.length;
+      } catch {
+        // silent — count stays absent (shows "–")
+      }
+    }
+    setWaitlistCounts(counts);
+  }, [request]);
+
   const loadServices = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const items = await fetchServices();
       setServices(items);
+      void loadWaitlistCounts(items);
     } catch {
       setError('Failed to load services.');
     } finally {
       setIsLoading(false);
     }
-  }, [fetchServices]);
+  }, [fetchServices, loadWaitlistCounts]);
 
   useEffect(() => { loadServices(); }, [loadServices]);
 
@@ -265,6 +283,20 @@ export default function ServicesScreen() {
                   <Text className="text-sm font-medium text-red-600">Delete</Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                className="mt-2 py-1.5 items-center"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(business)/waitlist/[serviceId]' as never,
+                    params: { serviceId: service.serviceId, serviceName: service.name },
+                  })
+                }
+              >
+                <Text className="text-indigo-600 text-sm font-medium">
+                  {`View Waitlist (${waitlistCounts[service.serviceId] !== undefined ? waitlistCounts[service.serviceId] : '…'})`}
+                </Text>
+              </TouchableOpacity>
             </View>
           ))
         )}

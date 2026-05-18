@@ -5,10 +5,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCustomerApi } from '../../../hooks/useCustomerApi';
-import { ApiError } from '../../../hooks/useApi';
+import { useApi, ApiError } from '../../../hooks/useApi';
 import type { BusinessProfile, Service, AvailabilityWindow } from '@qulene/api-types';
 
 const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -25,12 +26,14 @@ export default function BusinessDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { fetchBusiness, fetchBusinessServices, fetchBusinessAvailability } = useCustomerApi();
+  const { request } = useApi();
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [windows, setWindows] = useState<AvailabilityWindow[]>([]);
+  const [joiningServiceId, setJoiningServiceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -77,6 +80,39 @@ export default function BusinessDetailScreen() {
         durationMinutes: String(service.durationMinutes),
       },
     });
+  };
+
+  const handleJoinWaitlist = (svc: Service) => {
+    Alert.alert(
+      'Join Waitlist?',
+      `Join the waitlist for ${svc.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'OK',
+          onPress: async () => {
+            setJoiningServiceId(svc.serviceId);
+            try {
+              await request('/waitlist', {
+                method: 'POST',
+                body: JSON.stringify({ serviceId: svc.serviceId }),
+              });
+              Alert.alert('Added', "You're on the waitlist!");
+            } catch (e) {
+              if (e instanceof ApiError && e.code === 'CONFLICT') {
+                Alert.alert('Already on waitlist', "You're already on the waitlist for this service.");
+              } else if (e instanceof ApiError && e.code === 'NOT_FOUND') {
+                Alert.alert('Not available', 'This service is no longer available.');
+              } else {
+                Alert.alert('Error', 'Something went wrong. Please try again.');
+              }
+            } finally {
+              setJoiningServiceId(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (isLoading) {
@@ -176,13 +212,11 @@ export default function BusinessDetailScreen() {
           </View>
         ) : (
           services.map((svc) => (
-            <TouchableOpacity
+            <View
               key={svc.serviceId}
-              className="flex-row items-center border border-gray-200 rounded-xl px-4 py-3 mb-2"
-              onPress={() => handleServiceTap(svc)}
-              activeOpacity={0.7}
+              className="border border-gray-200 rounded-xl px-4 py-3 mb-2"
             >
-              <View className="flex-1">
+              <View className="mb-3">
                 <Text className="text-base font-medium text-gray-900">{svc.name}</Text>
                 <Text className="text-sm text-gray-500 mt-0.5">
                   {svc.durationMinutes} min · {formatPrice(svc.price)}
@@ -193,8 +227,26 @@ export default function BusinessDetailScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Text className="text-gray-300 text-xl ml-2">›</Text>
-            </TouchableOpacity>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  className="flex-1 bg-indigo-600 rounded-lg py-2 items-center"
+                  onPress={() => handleServiceTap(svc)}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-white text-sm font-medium">Request Appointment</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="flex-1 border border-indigo-600 rounded-lg py-2 items-center"
+                  onPress={() => handleJoinWaitlist(svc)}
+                  disabled={joiningServiceId === svc.serviceId}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-indigo-600 text-sm font-medium">
+                    {joiningServiceId === svc.serviceId ? 'Joining…' : 'Join Waitlist'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ))
         )}
       </View>

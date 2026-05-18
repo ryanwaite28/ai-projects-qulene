@@ -27,7 +27,6 @@ export default function CustomerLayout() {
         options={{
           title: 'Waitlist',
           tabBarIcon: () => <TabIcon label="⏳" />,
-          href: null,
         }}
       />
       <Tabs.Screen

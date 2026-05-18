@@ -15,6 +15,7 @@ import { getServiceById } from '../db/tables/services.table.js';
 import { putNotification } from '../db/tables/notifications.table.js';
 import { incrementUnreadCount } from '../db/tables/users.table.js';
 import { publishEvent } from '../clients/sns.client.js';
+import { promoteOldestForService } from './waitlist.service.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAGE_SIZE = 20;
@@ -175,7 +176,11 @@ export async function cancelRequest(
   });
   await incrementUnreadCount(dynamo, found.businessId);
 
-  // TODO: Phase 4a — call waitlist.service.promoteOldestForService(dynamo, sns, found.serviceId) here
+  try {
+    await promoteOldestForService(dynamo, sns, { serviceId: found.serviceId });
+  } catch (promoteErr) {
+    console.log(JSON.stringify({ level: 'warn', action: 'cancelRequest', error: 'promoteOldestForService failed', detail: String(promoteErr) }));
+  }
   await publishEvent(sns, 'REQUEST_CANCELLED', { appointmentRequestId: input.requestId });
 
   const cancelled: AppointmentRequest = { ...found, status: 'CANCELLED', updatedAt: now };
@@ -262,7 +267,11 @@ export async function declineRequest(
     createdAt: now,
   });
   await incrementUnreadCount(dynamo, found.customerId);
-  // TODO: Phase 4a — call waitlist.service.promoteOldestForService(dynamo, sns, found.serviceId) here
+  try {
+    await promoteOldestForService(dynamo, sns, { serviceId: found.serviceId });
+  } catch (promoteErr) {
+    console.log(JSON.stringify({ level: 'warn', action: 'declineRequest', error: 'promoteOldestForService failed', detail: String(promoteErr) }));
+  }
   await publishEvent(sns, 'REQUEST_DECLINED', { appointmentRequestId: input.requestId });
 
   const declined: AppointmentRequest = { ...found, status: 'DECLINED', updatedAt: now };

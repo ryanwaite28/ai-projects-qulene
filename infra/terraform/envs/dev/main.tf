@@ -626,6 +626,99 @@ resource "aws_apigatewayv2_route" "delete_appointments_by_id" {
 }
 
 ###############################################################################
+# Phase 4a — DynamoDB waitlist-entries table
+###############################################################################
+
+module "dynamodb_waitlist_entries" {
+  source = "../../modules/dynamodb-waitlist-entries"
+
+  environment = var.environment
+}
+
+###############################################################################
+# Phase 4a — Lambda: waitlist
+#
+# Env var cross-reference (CLAUDE.md Rule):
+#   WAITLIST_ENTRIES_TABLE → waitlist-entries.table.ts TABLE()
+#   NOTIFICATIONS_TABLE    → notifications.table.ts TABLE()
+#   USERS_TABLE            → users.table.ts TABLE()  (incrementUnreadCount)
+#   SERVICES_TABLE         → services.table.ts TABLE() (getServiceById)
+#   SNS_TOPIC_ARN          → sns.client.ts publishEvent()
+#   SNS_ENDPOINT           → sns.client.ts createSnsClient()
+#   DYNAMODB_ENDPOINT      → dynamo.client.ts createDynamoClient()
+#   AWS_REGION             → dynamo.client.ts + sns.client.ts
+###############################################################################
+
+module "lambda_waitlist" {
+  source = "../../modules/lambda-waitlist"
+
+  environment                = var.environment
+  aws_region                 = var.aws_region
+  waitlist_entries_table_name = module.dynamodb_waitlist_entries.table_name
+  waitlist_entries_table_arn  = module.dynamodb_waitlist_entries.table_arn
+  notifications_table_name   = module.dynamodb_notifications.table_name
+  notifications_table_arn    = module.dynamodb_notifications.table_arn
+  users_table_name           = module.dynamodb_users.table_name
+  users_table_arn            = module.dynamodb_users.table_arn
+  services_table_name        = module.dynamodb_services.table_name
+  services_table_arn         = module.dynamodb_services.table_arn
+  sns_topic_arn              = aws_sns_topic.events.arn
+}
+
+# Allow API Gateway to invoke lambda-waitlist
+resource "aws_lambda_permission" "api_gw_waitlist" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda_waitlist.function_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.api_gateway.execution_arn}/*/*"
+}
+
+# Integration: API Gateway → lambda-waitlist
+resource "aws_apigatewayv2_integration" "lambda_waitlist" {
+  api_id                 = module.api_gateway.api_id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = module.lambda_waitlist.invoke_arn
+  payload_format_version = "2.0"
+}
+
+# Route: POST /waitlist — CUSTOMER only (JWT required)
+resource "aws_apigatewayv2_route" "post_waitlist" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "POST /waitlist"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_waitlist.id}"
+}
+
+# Route: GET /waitlist/me — CUSTOMER only (JWT required)
+resource "aws_apigatewayv2_route" "get_waitlist_me" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "GET /waitlist/me"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_waitlist.id}"
+}
+
+# Route: DELETE /waitlist/{entryId} — CUSTOMER only (JWT required)
+resource "aws_apigatewayv2_route" "delete_waitlist_entry" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "DELETE /waitlist/{entryId}"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_waitlist.id}"
+}
+
+# Route: GET /businesses/me/waitlist/{serviceId} — BUSINESS only (JWT required)
+resource "aws_apigatewayv2_route" "get_businesses_me_waitlist" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "GET /businesses/me/waitlist/{serviceId}"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_waitlist.id}"
+}
+
+###############################################################################
 # Phase 3c — Business appointment action routes (BUSINESS only, JWT required)
 ###############################################################################
 

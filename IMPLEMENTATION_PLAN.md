@@ -392,12 +392,12 @@ The notification Lambda:
 - **Prerequisites**: 3c ✅
 - **Key files**: `backend/src/services/waitlist.service.ts`, `backend/src/db/tables/waitlist-entries.table.ts`, `backend/src/handlers/waitlist.handler.ts`, `infra/terraform/modules/dynamodb-waitlist-entries/main.tf`, `infra/terraform/modules/lambda-waitlist/main.tf`, `backend/src/services/appointment.service.ts` (modify decline + cancel to call `promoteOldestForService`), tests
 - **Done When**:
-  - [ ] `POST /waitlist` (CUSTOMER, uniqueness check on `customerId+serviceId+status=ACTIVE`)
-  - [ ] `GET /waitlist/me` (CUSTOMER)
-  - [ ] `DELETE /waitlist/:entryId` (CUSTOMER, ownership-checked, sets `status=REMOVED`)
-  - [ ] `GET /businesses/me/waitlist/:serviceId` (BUSINESS, ownership-checked)
-  - [ ] Appointment decline / cancel triggers `promoteOldestForService` → publishes `WAITLIST_PROMOTED`
-  - [ ] Integration test: customer A submits → business declines → customer B (waitlisted) promoted → notification + event published
+  - [x] `POST /waitlist` (CUSTOMER, uniqueness check on `customerId+serviceId+status=ACTIVE`)
+  - [x] `GET /waitlist/me` (CUSTOMER)
+  - [x] `DELETE /waitlist/:entryId` (CUSTOMER, ownership-checked, sets `status=REMOVED`)
+  - [x] `GET /businesses/me/waitlist/:serviceId` (BUSINESS, ownership-checked)
+  - [x] Appointment decline / cancel triggers `promoteOldestForService` → publishes `WAITLIST_PROMOTED`
+  - [x] Integration test: customer A submits → business declines → customer B (waitlisted) promoted → notification + event published
 
 #### 4b — Mobile customer waitlist screens (join + my list)
 
@@ -627,9 +627,9 @@ and reported your findings.
 | 3c | Backend appointment business actions | `specs/03c-appointment-business-backend.md` | ✅ Complete | 2026-05-18 |
 | 3d | Mobile customer appointment screens | `specs/03d-appointment-customer-mobile.md` | ✅ Complete | 2026-05-18 |
 | 3e | Mobile business incoming requests | `specs/03e-appointment-business-mobile.md` | ✅ Complete | 2026-05-18 |
-| 4a | Backend waitlist | `specs/04a-waitlist-backend.md` | ⬜ Not Started | — |
-| 4b | Mobile customer waitlist | `specs/04b-waitlist-customer-mobile.md` | ⬜ Not Started | — |
-| 4c | Mobile business waitlist | `specs/04c-waitlist-business-mobile.md` | ⬜ Not Started | — |
+| 4a | Backend waitlist | `specs/04a-waitlist-backend.md` | ✅ Complete | 2026-05-18 |
+| 4b | Mobile customer waitlist | `specs/04b-waitlist-customer-mobile.md` | ✅ Complete | 2026-05-18 |
+| 4c | Mobile business waitlist | `specs/04c-waitlist-business-mobile.md` | ✅ Complete | 2026-05-18 |
 | 5a | Notification Terraform | `specs/05a-notification-terraform.md` | ⬜ Not Started | — |
 | 5b | Email rendering | `specs/05b-email-rendering.md` | ⬜ Not Started | — |
 | 5c | Notification consumer | `specs/05c-notification-consumer.md` | ⬜ Not Started | — |

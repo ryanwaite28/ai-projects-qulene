@@ -15,6 +15,7 @@ export default defineConfig({
       AVAILABILITY_WINDOWS_TABLE: 'qulene-local-availability-windows',
       APPOINTMENT_REQUESTS_TABLE: 'qulene-local-appointment-requests',
       NOTIFICATIONS_TABLE: 'qulene-local-notifications',
+      WAITLIST_ENTRIES_TABLE: 'qulene-local-waitlist-entries',
       SNS_TOPIC_ARN: 'arn:aws:sns:us-east-1:000000000000:qulene-local-events',
     },
   },
