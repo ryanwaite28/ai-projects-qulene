@@ -1,6 +1,6 @@
 ## Spec: Phase 3d — Mobile customer appointment screens (request form + my appointments)
 **FR references**: FR-APT-01, FR-APT-02, FR-APT-09, FR-APT-11
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 2e ✅, 3b ✅
 **Size check**: 3 files · 0 service functions · 1 layer (mobile) · 2 screens (modified detail + new appointments) · fits one session ✅
 
@@ -25,10 +25,18 @@ FR-APT-01/02/09/11: the customer must be able to submit a request, see their own
 **Navigation completeness**: Appointments is a tab (entry point); appointment request form is reachable from any service detail (entry point).
 
 ### Done When
-- [ ] Request form generates one `idempotencyKey` per mount; retries from this same screen do not create duplicates (tested by killing network during first submit)
-- [ ] Past `proposedAt` blocked client-side and surfaces 422 cleanly if it slips through
-- [ ] Cancel flow ownership-checked server-side (already covered by 3b)
-- [ ] My Appointments list paginated + sorted by `proposedAt` desc; pull-to-refresh
-- [ ] Empty states + loading skeletons present
-- [ ] All NativeWind; all routes have a navigation entry point
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Request form generates one `idempotencyKey` per mount; retries from this same screen do not create duplicates (tested by killing network during first submit)
+- [x] Past `proposedAt` blocked client-side and surfaces 422 cleanly if it slips through
+- [x] Cancel flow ownership-checked server-side (already covered by 3b)
+- [x] My Appointments list paginated + sorted by `proposedAt` desc; pull-to-refresh
+- [x] Empty states + loading skeletons present
+- [x] All NativeWind; all routes have a navigation entry point
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+
+### Implementation Notes
+- Supporting change: `apps/mobile/expo-env.d.ts` created to fix pre-existing TS2591 error (`process` not typed); declares `NodeJS.ProcessEnv` with `EXPO_PUBLIC_API_URL`.
+- Supporting change: `useApi.ts` extended with `requestWithCursor<T>` returning `{ data: T; nextCursor: string | null }` — same auth flow as `request` but preserves top-level pagination fields.
+- `appointment-request/[serviceId].tsx` uses a `useRef<string>` initialized with `generateUUID()` at mount; the key is locked for the screen lifetime so retries submit the same key.
+- Date/time entry uses two TextInputs (YYYY-MM-DD + HH:MM) combined into an ISO string; no external DateTimePicker dependency required.
+- Cancel action optimistically updates the local row to CANCELLED; re-fetches from server on error.
+- `appointments.tsx` uses a synchronous `if (!loaded)` guard as the initial-load trigger (avoids useEffect + state flush ordering issues in strict mode).

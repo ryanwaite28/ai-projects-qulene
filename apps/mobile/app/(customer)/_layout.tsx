@@ -20,7 +20,6 @@ export default function CustomerLayout() {
         options={{
           title: 'Appointments',
           tabBarIcon: () => <TabIcon label="📅" />,
-          href: null,
         }}
       />
       <Tabs.Screen

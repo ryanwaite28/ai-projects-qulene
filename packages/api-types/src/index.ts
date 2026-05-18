@@ -55,6 +55,9 @@ export interface AvailabilityWindow {
   createdAt: string;
 }
 
+export type { AppointmentStatus, AppointmentRequest } from './appointment.types.js';
+export type { NotificationType, Notification } from './notification.types.js';
+
 export interface ApiError {
   code: string;
   message: string;

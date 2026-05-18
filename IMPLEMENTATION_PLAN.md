@@ -367,10 +367,10 @@ The notification Lambda:
 - **Prerequisites**: 3a ✅, 3b ✅
 - **Key files**: `backend/src/services/appointment.service.ts` (functions: `acceptRequest`, `declineRequest`, `markComplete`, `markNoShow`, `listBusinessRequests`), `backend/src/handlers/appointment.handler.ts` (additional routes), tests
 - **Done When**:
-  - [ ] `PATCH /businesses/me/appointments/:requestId/{accept|decline|complete|noshow}` (BUSINESS, ownership-checked)
-  - [ ] `GET /businesses/me/appointments` (BUSINESS, paginated by `businessId-status-index`, `status` filter)
-  - [ ] All four lifecycle actions publish appropriate SNS events
-  - [ ] Decline does NOT promote waitlist yet (deferred to Phase 4 where `waitlist.service.promoteOldestForService` is wired in)
+  - [x] `PATCH /businesses/me/appointments/:requestId/{accept|decline|complete|noshow}` (BUSINESS, ownership-checked)
+  - [x] `GET /businesses/me/appointments` (BUSINESS, paginated by `businessId-status-index`, `status` filter)
+  - [x] All four lifecycle actions publish appropriate SNS events
+  - [x] Decline does NOT promote waitlist yet (deferred to Phase 4 where `waitlist.service.promoteOldestForService` is wired in)
 
 #### 3d — Mobile customer appointment screens (request form + my appointments list)
 
@@ -622,11 +622,11 @@ and reported your findings.
 | 2c | Backend availability windows | `specs/02c-availability-backend.md` | ✅ Complete | 2026-05-18 |
 | 2d | Mobile business management | `specs/02d-business-mobile.md` | ✅ Complete | 2026-05-18 |
 | 2e | Mobile customer browse | `specs/02e-browse-mobile.md` | ✅ Complete | 2026-05-18 |
-| 3a | Backend appointment tables | `specs/03a-appointment-tables.md` | ⬜ Not Started | — |
-| 3b | Backend appointment customer flow | `specs/03b-appointment-customer-backend.md` | ⬜ Not Started | — |
-| 3c | Backend appointment business actions | `specs/03c-appointment-business-backend.md` | ⬜ Not Started | — |
-| 3d | Mobile customer appointment screens | `specs/03d-appointment-customer-mobile.md` | ⬜ Not Started | — |
-| 3e | Mobile business incoming requests | `specs/03e-appointment-business-mobile.md` | ⬜ Not Started | — |
+| 3a | Backend appointment tables | `specs/03a-appointment-tables.md` | ✅ Complete | 2026-05-18 |
+| 3b | Backend appointment customer flow | `specs/03b-appointment-customer-backend.md` | ✅ Complete | 2026-05-18 |
+| 3c | Backend appointment business actions | `specs/03c-appointment-business-backend.md` | ✅ Complete | 2026-05-18 |
+| 3d | Mobile customer appointment screens | `specs/03d-appointment-customer-mobile.md` | ✅ Complete | 2026-05-18 |
+| 3e | Mobile business incoming requests | `specs/03e-appointment-business-mobile.md` | ✅ Complete | 2026-05-18 |
 | 4a | Backend waitlist | `specs/04a-waitlist-backend.md` | ⬜ Not Started | — |
 | 4b | Mobile customer waitlist | `specs/04b-waitlist-customer-mobile.md` | ⬜ Not Started | — |
 | 4c | Mobile business waitlist | `specs/04c-waitlist-business-mobile.md` | ⬜ Not Started | — |

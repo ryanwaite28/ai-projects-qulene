@@ -1,6 +1,6 @@
 ## Spec: Phase 3a — Backend appointment tables (requests + notifications + TF)
 **FR references**: FR-APT-01 (table foundation), FR-NOTIF-01 (table foundation)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 2a ✅, 2b ✅
 **Size check**: 5 files · 0 service functions · 1 layer (TF + table helpers + shared types) · 2 new Terraform resource groups · fits one session ✅
 
@@ -24,9 +24,18 @@ Tables provisioned in both MiniStack (via a new entry in `infra/ministack/01-see
 No service-layer functions in this phase — table helpers only. Idempotent re-runs of Terraform apply produce no drift.
 
 ### Done When
-- [ ] `terraform apply` provisions both tables with all 5 GSIs total
-- [ ] MiniStack 01-seed.sh extended to create both tables locally (so 3a unblocks local dev for 3b)
-- [ ] `api-types` package exports `AppointmentRequest`, `AppointmentStatus`, `Notification`, `NotificationType`
-- [ ] Table helper unit tests pass (against mocked DocumentClient)
-- [ ] No raw DocumentClient calls outside `db/tables/`
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `terraform apply` provisions both tables with all 5 GSIs total
+- [x] MiniStack 01-seed.sh extended to create both tables locally (so 3a unblocks local dev for 3b)
+- [x] `api-types` package exports `AppointmentRequest`, `AppointmentStatus`, `Notification`, `NotificationType`
+- [x] Table helper unit tests pass (against mocked DocumentClient)
+- [x] No raw DocumentClient calls outside `db/tables/`
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+
+### Implementation Notes
+- `sns.client.ts` already existed from Phase 2b with `createSnsClient()`. Phase 3a added `publishEvent(sns, eventType, payload)` which wraps `PublishCommand` with the standard SNS envelope `{ eventType, payload }` per CLAUDE.md Async Event Contracts section.
+- `SnsEventType = NotificationType` — all 6 event types including `REQUEST_RECEIVED` are already in `NotificationType`; no separate union needed.
+- `appointment.types.ts` and `notification.types.ts` created as separate files in `packages/api-types/src/`; re-exported from `index.ts` via `export type { ... } from '...'`.
+- `listByService` accepts optional `statusFilter` — when absent, returns all requests for the service (needed for Phase 3c soft-delete cascade).
+- `listByCustomer` and `listByUser` use `ScanIndexForward: false` (newest first).
+- Table helper unit tests in `src/db/tables/__tests__/` (new directory): 17 tests across 2 files, all passing.
+- Supporting changes not listed in spec's file set: `backend/vitest.config.ts` (added 2 table env vars), `infra/terraform/envs/dev/main.tf` (2 new module blocks), `infra/ministack/01-seed.sh` (2 new DynamoDB table creates with GSIs).

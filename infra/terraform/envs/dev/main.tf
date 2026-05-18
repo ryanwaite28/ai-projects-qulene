@@ -390,6 +390,26 @@ resource "aws_apigatewayv2_route" "delete_businesses_me_availability" {
 }
 
 ###############################################################################
+# Phase 3a — DynamoDB appointment-requests table
+###############################################################################
+
+module "dynamodb_appointment_requests" {
+  source = "../../modules/dynamodb-appointment-requests"
+
+  environment = var.environment
+}
+
+###############################################################################
+# Phase 3a — DynamoDB notifications table
+###############################################################################
+
+module "dynamodb_notifications" {
+  source = "../../modules/dynamodb-notifications"
+
+  environment = var.environment
+}
+
+###############################################################################
 # Phase 2b — SNS events topic
 #
 # Provisioned here because Phase 2b is the first Lambda that publishes events.
@@ -529,6 +549,129 @@ resource "aws_apigatewayv2_route" "delete_businesses_me_services" {
   authorization_type = "JWT"
   authorizer_id      = module.api_gateway.jwt_authorizer_id
   target             = "integrations/${aws_apigatewayv2_integration.lambda_services.id}"
+}
+
+###############################################################################
+# Phase 3b — Lambda: appointments
+#
+# Env var cross-reference (CLAUDE.md Rule 12.10):
+#   APPOINTMENT_REQUESTS_TABLE → appointment-requests.table.ts TABLE()
+#   NOTIFICATIONS_TABLE        → notifications.table.ts TABLE()
+#   USERS_TABLE                → users.table.ts TABLE()  (for incrementUnreadCount)
+#   SERVICES_TABLE             → services.table.ts TABLE() (for getServiceById)
+#   SNS_TOPIC_ARN              → sns.client.ts publishEvent()
+#   SNS_ENDPOINT               → sns.client.ts createSnsClient()
+#   DYNAMODB_ENDPOINT          → dynamo.client.ts createDynamoClient()
+#   AWS_REGION                 → dynamo.client.ts + sns.client.ts
+###############################################################################
+
+module "lambda_appointments" {
+  source = "../../modules/lambda-appointments"
+
+  environment                     = var.environment
+  aws_region                      = var.aws_region
+  appointment_requests_table_name = module.dynamodb_appointment_requests.table_name
+  appointment_requests_table_arn  = module.dynamodb_appointment_requests.table_arn
+  notifications_table_name        = module.dynamodb_notifications.table_name
+  notifications_table_arn         = module.dynamodb_notifications.table_arn
+  users_table_name                = module.dynamodb_users.table_name
+  users_table_arn                 = module.dynamodb_users.table_arn
+  services_table_name             = module.dynamodb_services.table_name
+  services_table_arn              = module.dynamodb_services.table_arn
+  sns_topic_arn                   = aws_sns_topic.events.arn
+}
+
+# Allow API Gateway to invoke lambda-appointments
+resource "aws_lambda_permission" "api_gw_appointments" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda_appointments.function_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.api_gateway.execution_arn}/*/*"
+}
+
+# Integration: API Gateway → lambda-appointments
+resource "aws_apigatewayv2_integration" "lambda_appointments" {
+  api_id                 = module.api_gateway.api_id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = module.lambda_appointments.invoke_arn
+  payload_format_version = "2.0"
+}
+
+# Route: POST /appointments — CUSTOMER only (JWT required)
+resource "aws_apigatewayv2_route" "post_appointments" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "POST /appointments"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_appointments.id}"
+}
+
+# Route: GET /appointments/me — CUSTOMER only (JWT required)
+resource "aws_apigatewayv2_route" "get_appointments_me" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "GET /appointments/me"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_appointments.id}"
+}
+
+# Route: DELETE /appointments/{requestId} — CUSTOMER only (JWT required)
+resource "aws_apigatewayv2_route" "delete_appointments_by_id" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "DELETE /appointments/{requestId}"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_appointments.id}"
+}
+
+###############################################################################
+# Phase 3c — Business appointment action routes (BUSINESS only, JWT required)
+###############################################################################
+
+# Route: GET /businesses/me/appointments — BUSINESS only
+resource "aws_apigatewayv2_route" "get_businesses_me_appointments" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "GET /businesses/me/appointments"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_appointments.id}"
+}
+
+# Route: PATCH /businesses/me/appointments/{requestId}/accept — BUSINESS only
+resource "aws_apigatewayv2_route" "patch_businesses_me_appointments_accept" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "PATCH /businesses/me/appointments/{requestId}/accept"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_appointments.id}"
+}
+
+# Route: PATCH /businesses/me/appointments/{requestId}/decline — BUSINESS only
+resource "aws_apigatewayv2_route" "patch_businesses_me_appointments_decline" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "PATCH /businesses/me/appointments/{requestId}/decline"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_appointments.id}"
+}
+
+# Route: PATCH /businesses/me/appointments/{requestId}/complete — BUSINESS only
+resource "aws_apigatewayv2_route" "patch_businesses_me_appointments_complete" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "PATCH /businesses/me/appointments/{requestId}/complete"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_appointments.id}"
+}
+
+# Route: PATCH /businesses/me/appointments/{requestId}/noshow — BUSINESS only
+resource "aws_apigatewayv2_route" "patch_businesses_me_appointments_noshow" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "PATCH /businesses/me/appointments/{requestId}/noshow"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_appointments.id}"
 }
 
 ###############################################################################

@@ -60,5 +60,34 @@ export function useApi() {
     return json.data as T;
   }, [handleUnauthorized]);
 
-  return { request };
+  const requestWithCursor = useCallback(async <T>(
+    path: string,
+    init?: RequestInit,
+  ): Promise<{ data: T; nextCursor: string | null }> => {
+    const sessionData = await getCurrentSession();
+    if (!sessionData) {
+      await handleUnauthorized();
+      throw new ApiError('UNAUTHORIZED', 'No active session');
+    }
+
+    const response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {}),
+        Authorization: `Bearer ${sessionData.accessToken}`,
+      },
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      await handleUnauthorized();
+      throw new ApiError('UNAUTHORIZED', 'Session expired');
+    }
+
+    const json = await response.json();
+    if (json.error) throw new ApiError(json.error.code, json.error.message);
+    return { data: json.data as T, nextCursor: json.nextCursor ?? null };
+  }, [handleUnauthorized]);
+
+  return { request, requestWithCursor };
 }

@@ -13,6 +13,8 @@ export default defineConfig({
       BUSINESS_PROFILES_TABLE: 'qulene-local-business-profiles',
       SERVICES_TABLE: 'qulene-local-services',
       AVAILABILITY_WINDOWS_TABLE: 'qulene-local-availability-windows',
+      APPOINTMENT_REQUESTS_TABLE: 'qulene-local-appointment-requests',
+      NOTIFICATIONS_TABLE: 'qulene-local-notifications',
       SNS_TOPIC_ARN: 'arn:aws:sns:us-east-1:000000000000:qulene-local-events',
     },
   },

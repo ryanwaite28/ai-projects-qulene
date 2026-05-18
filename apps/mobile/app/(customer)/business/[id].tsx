@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCustomerApi } from '../../../hooks/useCustomerApi';
@@ -65,8 +64,19 @@ export default function BusinessDetailScreen() {
     return () => { cancelled = true; };
   }, [id, fetchBusiness, fetchBusinessServices, fetchBusinessAvailability]);
 
-  const handleServiceTap = (_service: Service) => {
-    Alert.alert('Coming soon', 'Appointment request will be available in the next update.');
+  const handleServiceTap = (service: Service) => {
+    if (!business) return;
+    router.push({
+      pathname: '/(customer)/appointment-request/[serviceId]' as never,
+      params: {
+        serviceId: service.serviceId,
+        businessId: business.businessId,
+        businessName: business.businessName ?? '',
+        serviceName: service.name,
+        price: String(service.price),
+        durationMinutes: String(service.durationMinutes),
+      },
+    });
   };
 
   if (isLoading) {

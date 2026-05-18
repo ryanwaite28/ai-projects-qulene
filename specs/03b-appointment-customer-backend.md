@@ -1,6 +1,6 @@
 ## Spec: Phase 3b — Backend appointment customer flow (create + idempotency + cancel + list)
 **FR references**: FR-APT-01, FR-APT-02, FR-APT-03, FR-APT-04, FR-APT-09, FR-APT-11, NFR-04 (idempotency)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 3a ✅
 **Size check**: 5 files · 3 service functions · 1 layer · 3 routes · fits one session ✅
 
@@ -35,11 +35,20 @@ FR-APT-01/02/03/04/09/11 form the customer's complete read+write surface against
 **`listCustomerRequests(dynamo, { customerId, cursor? })`**: Query `customerId-index` PK=customerId, sorted by `createdAt` descending; paginated.
 
 ### Done When
-- [ ] Idempotency: same `idempotencyKey` replay returns original record; no duplicate write; no second SNS publish (verified by counting publish calls in test)
-- [ ] FR-APT-02: past `proposedAt` → 422
-- [ ] FR-APT-03: duplicate active request for same service → 409
-- [ ] FR-APT-09: cancel ownership-enforced (other customer → 403); already-final status → 422
-- [ ] CUSTOMER → only own data; ownership verified across all routes
-- [ ] `dist/lambdas/appointments/index.js` bundle present
-- [ ] API GW integration blocks added for 3 routes; Lambda env vars match `process.env.*`
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Idempotency: same `idempotencyKey` replay returns original record; no duplicate write; no second SNS publish (verified by counting publish calls in test)
+- [x] FR-APT-02: past `proposedAt` → 422
+- [x] FR-APT-03: duplicate active request for same service → 409
+- [x] FR-APT-09: cancel ownership-enforced (other customer → 403); already-final status → 422
+- [x] CUSTOMER → only own data; ownership verified across all routes
+- [x] `dist/lambdas/appointments/index.js` bundle present (esbuild entry added)
+- [x] API GW integration blocks added for 3 routes; Lambda env vars match `process.env.*`
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+
+### Implementation Notes
+- `users.table.ts` extended with `incrementUnreadCount(dynamo, userId)` — atomic `ADD unreadNotificationCount :one` (supporting change not in spec file list).
+- `esbuild.config.ts` extended with `appointments: 'src/handlers/appointment.handler.ts'` entry (supporting change).
+- `cancelRequest` has a `// TODO: Phase 4a` comment marking where waitlist promotion will be wired.
+- `getRequestByIdempotencyKey` signature is `(dynamo, idempotencyKey)` (no customerId param); service does a post-lookup `existing.customerId === input.customerId` guard to prevent cross-customer idempotency key collisions.
+- `listByCustomer` called with `DUPLICATE_CHECK_LIMIT = 200` for the FR-APT-03 duplicate check — acceptable for a portfolio app where customers won't have thousands of requests.
+- `lambda-appointments/main.tf` is a self-contained module (wraps shared lambda module) with all DynamoDB + SNS IAM policies; takes table names/ARNs as variables.
+- 15/15 unit tests pass; integration tests in `tests/integration/appointment.handler.test.ts` cover all Done When scenarios (require MiniStack).

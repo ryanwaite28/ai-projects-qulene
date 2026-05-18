@@ -42,6 +42,20 @@ export async function putUser(
   await dynamo.send(new PutCommand({ TableName: TABLE(), Item: user }));
 }
 
+export async function incrementUnreadCount(
+  dynamo: DynamoDBDocumentClient,
+  userId: string,
+): Promise<void> {
+  await dynamo.send(
+    new UpdateCommand({
+      TableName: TABLE(),
+      Key: { userId },
+      UpdateExpression: 'ADD unreadNotificationCount :one',
+      ExpressionAttributeValues: { ':one': 1 },
+    }),
+  );
+}
+
 export async function updateUserName(
   dynamo: DynamoDBDocumentClient,
   userId: string,

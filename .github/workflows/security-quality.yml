@@ -1,0 +1,1168 @@
+# ==============================================================================
+#  Reusable Workflow: Security Hardening
+#
+#  All-in-one security scanning workflow covering:
+#    SAST         · CodeQL (deep semantic) + Semgrep (broad pattern)
+#    Secrets      · Gitleaks (full git history scan)
+#    Supply Chain · Dependency Review (PR gate) + OSV Scanner (CVE database)
+#    Licenses     · License checker (blocks disallowed licenses)
+#    Container    · Trivy image scan (optional — enable when you build images)
+#    IaC          · Trivy config scan (optional — enable when you have IaC)
+#    Scorecard    · OpenSSF Scorecard (repo hygiene score)
+#    SBOM         · Syft (generates CycloneDX artifact for compliance/auditing)
+#
+#  Job graph (all parallel after setup, fan-in at security-gate):
+#
+#  setup ──┬── codeql
+#          ├── semgrep
+#          ├── gitleaks
+#          ├── dependency-review
+#          ├── osv-scan
+#          ├── license-check
+#          ├── container-scan ─────── (skippable)
+#          ├── iac-scan ────────────── (skippable)
+#          ├── scorecard ───────────── (skippable)
+#          └── sbom
+#                    └─────────────── security-gate (fan-in)
+#
+#  All tools are free and open source. No external servers required.
+#  SCA (Dependabot) is not included here — enable it once in repo settings
+#  under Security > Dependabot alerts; it runs automatically on every push.
+#
+#  Minimal caller example:
+#
+#    jobs:
+#      harden:
+#        uses: ./.github/workflows/security-hardening.yml
+#        with:
+#          language: typescript
+#        secrets: inherit
+#
+#  Full caller example:
+#
+#    jobs:
+#      harden:
+#        uses: ./.github/workflows/security-hardening.yml
+#        with:
+#          language: typescript
+#          scan-path: src/
+#          fail-on-error: true
+#          license-allow-list: "MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC"
+#          container-enable: true
+#          container-image: "ghcr.io/my-org/my-app:${{ github.sha }}"
+#          iac-enable: true
+#          iac-path: infra/
+#        secrets:
+#          semgrep-app-token: ${{ secrets.SEMGREP_APP_TOKEN }}
+# ==============================================================================
+
+name: Security Hardening
+
+on:
+  workflow_call:
+    inputs:
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Scan Scope
+      # ────────────────────────────────────────────────────────────────────────
+      language:
+        description: >
+          Primary programming language of the code being scanned.
+          CodeQL supported values: c-cpp, csharp, go, java-kotlin,
+          javascript-typescript, python, ruby, swift.
+          Common aliases (ts, js, py, kotlin, c++, etc.) are normalized.
+        type: string
+        required: true
+
+      scan-path:
+        description: >
+          Relative path within the repository to scan for SAST tools
+          (e.g. "src/" or "services/api"). Defaults to repo root.
+        type: string
+        required: false
+        default: "."
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Failure Behavior
+      # ────────────────────────────────────────────────────────────────────────
+      fail-on-error:
+        description: >
+          When true  — any scanner failure exits non-zero, blocking the caller.
+          When false — findings are reported but the workflow always succeeds
+                       (advisory / fail-open mode; useful when onboarding).
+        type: boolean
+        required: false
+        default: true
+
+      # ────────────────────────────────────────────────────────────────────────
+      # CodeQL
+      # ────────────────────────────────────────────────────────────────────────
+      codeql-queries:
+        description: >
+          Comma-separated CodeQL query suites to run.
+          Options: "security-extended" (default), "security-and-quality".
+        type: string
+        required: false
+        default: "security-extended"
+
+      codeql-config-file:
+        description: >
+          Path to a custom CodeQL config file relative to the repo root
+          (e.g. ".github/codeql/config.yml"). Leave blank for defaults.
+        type: string
+        required: false
+        default: ""
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Semgrep
+      # ────────────────────────────────────────────────────────────────────────
+      semgrep-enable:
+        description: Set to false to skip Semgrep entirely.
+        type: boolean
+        required: false
+        default: true
+
+      semgrep-rules:
+        description: >
+          Semgrep ruleset(s), space-separated. Ignored when semgrep-app-token
+          is provided (Cloud policies take over).
+          Examples: "auto"  |  "p/owasp-top-ten"  |  "p/typescript p/react"
+        type: string
+        required: false
+        default: "auto"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Gitleaks — secrets detection
+      # ────────────────────────────────────────────────────────────────────────
+      gitleaks-enable:
+        description: Set to false to skip Gitleaks.
+        type: boolean
+        required: false
+        default: true
+
+      gitleaks-config-path:
+        description: >
+          Path to a custom Gitleaks TOML config relative to the repo root.
+          Leave blank to use Gitleaks defaults.
+        type: string
+        required: false
+        default: ""
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Supply Chain — Dependency Review
+      # ────────────────────────────────────────────────────────────────────────
+      dependency-review-enable:
+        description: >
+          Block PRs that introduce new vulnerable dependencies (uses GitHub's
+          dependency review API). Only meaningful on pull_request events;
+          the job is automatically skipped on push/schedule events.
+        type: boolean
+        required: false
+        default: true
+
+      dependency-review-severity:
+        description: >
+          Minimum CVSS severity that causes the dependency review to fail.
+          Options: critical, high, moderate, low.
+        type: string
+        required: false
+        default: "high"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Supply Chain — OSV Scanner (CVE database scan, all branches)
+      # ────────────────────────────────────────────────────────────────────────
+      osv-scan-enable:
+        description: >
+          Run OSV Scanner to check all dependencies against the OSV
+          vulnerability database (covers npm, PyPI, Go, Maven, Cargo, etc.).
+          Complements Dependabot — runs on every push, not just PRs.
+        type: boolean
+        required: false
+        default: true
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Supply Chain — License Compliance
+      # ────────────────────────────────────────────────────────────────────────
+      license-check-enable:
+        description: Set to false to skip license compliance scanning.
+        type: boolean
+        required: false
+        default: true
+
+      license-allow-list:
+        description: >
+          Comma-separated list of SPDX license identifiers that are permitted.
+          Any dependency with a license NOT in this list will fail the check.
+          Defaults to common permissive licenses safe for commercial use.
+        type: string
+        required: false
+        default: "MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,0BSD,Unlicense,CC0-1.0,Python-2.0,PSF-2.0"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Container Security — Trivy image scan
+      # ────────────────────────────────────────────────────────────────────────
+      container-enable:
+        description: >
+          Set to true to scan a container image. Requires container-image.
+          Typically enabled in workflows that build images before calling this.
+        type: boolean
+        required: false
+        default: false
+
+      container-image:
+        description: >
+          Full image reference to scan (e.g. "ghcr.io/my-org/app:sha-abc123").
+          Required when container-enable is true.
+        type: string
+        required: false
+        default: ""
+
+      container-severity:
+        description: >
+          Comma-separated Trivy severity levels that cause the scan to fail.
+          Options: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL.
+        type: string
+        required: false
+        default: "HIGH,CRITICAL"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # IaC Security — Trivy config scan
+      # ────────────────────────────────────────────────────────────────────────
+      iac-enable:
+        description: >
+          Set to true to scan Infrastructure as Code files (Terraform, Helm,
+          CloudFormation, Dockerfile, Kubernetes manifests) for misconfigurations.
+        type: boolean
+        required: false
+        default: false
+
+      iac-path:
+        description: >
+          Path to the IaC files to scan. Defaults to repo root.
+        type: string
+        required: false
+        default: "."
+
+      iac-severity:
+        description: >
+          Comma-separated Trivy severity levels that cause the IaC scan to fail.
+        type: string
+        required: false
+        default: "HIGH,CRITICAL"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # OpenSSF Scorecard — repo hygiene scoring
+      # ────────────────────────────────────────────────────────────────────────
+      scorecard-enable:
+        description: >
+          Run OpenSSF Scorecard to grade the repository's security hygiene:
+          branch protection, signed releases, dependency update tooling, etc.
+          Publishes results to the GitHub Security tab as SARIF.
+          Most useful on the default branch; safe to disable on feature branches.
+        type: boolean
+        required: false
+        default: true
+
+      # ────────────────────────────────────────────────────────────────────────
+      # SBOM — Software Bill of Materials
+      # ────────────────────────────────────────────────────────────────────────
+      sbom-enable:
+        description: >
+          Generate a Software Bill of Materials using Syft.
+          The SBOM is uploaded as a workflow artifact and optionally as a
+          GitHub release asset when run in a release context.
+          Required for FedRAMP, SOC2, and the EU Cyber Resilience Act.
+        type: boolean
+        required: false
+        default: true
+
+      sbom-format:
+        description: >
+          Output format for the SBOM.
+          Options: cyclonedx-json (default), cyclonedx-xml, spdx-json, spdx-tag-value.
+        type: string
+        required: false
+        default: "cyclonedx-json"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Runner
+      # ────────────────────────────────────────────────────────────────────────
+      runner:
+        description: GitHub Actions runner label to use for all jobs.
+        type: string
+        required: false
+        default: "ubuntu-latest"
+
+    secrets:
+      semgrep-app-token:
+        description: >
+          Optional Semgrep Cloud Platform token. When provided, Semgrep uses
+          org Cloud policies and posts findings to the Semgrep dashboard.
+          Without it, Semgrep runs fully offline using semgrep-rules.
+        required: false
+
+    outputs:
+      # Per-job statuses
+      codeql-status:
+        description: "'success' or 'failure'"
+        value: ${{ jobs.codeql.outputs.status }}
+
+      semgrep-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.semgrep.outputs.status }}
+
+      gitleaks-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.gitleaks.outputs.status }}
+
+      dependency-review-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.dependency-review.outputs.status }}
+
+      osv-scan-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.osv-scan.outputs.status }}
+
+      license-check-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.license-check.outputs.status }}
+
+      container-scan-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.container-scan.outputs.status }}
+
+      iac-scan-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.iac-scan.outputs.status }}
+
+      scorecard-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.scorecard.outputs.status }}
+
+      sbom-status:
+        description: "'success', 'failure', or 'skipped'"
+        value: ${{ jobs.sbom.outputs.status }}
+
+      # Overall gate
+      security-gate-passed:
+        description: "'true' if all enabled scanners passed, 'false' otherwise."
+        value: ${{ jobs.security-gate.outputs.passed }}
+
+# ==============================================================================
+jobs:
+
+  # ============================================================================
+  # SETUP — normalize inputs, compute derived flags
+  # ============================================================================
+  setup:
+    name: Setup / Normalize Inputs
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      codeql-language:        ${{ steps.normalize.outputs.codeql-language }}
+      is-pull-request:        ${{ steps.normalize.outputs.is-pull-request }}
+      dep-review-effective:   ${{ steps.normalize.outputs.dep-review-effective }}
+
+    steps:
+      - name: Normalize inputs
+        id: normalize
+        shell: bash
+        run: |
+          # ── CodeQL language aliases → canonical identifiers ──────────────────
+          RAW_LANG="${{ inputs.language }}"
+          case "${RAW_LANG,,}" in
+            typescript|ts|javascript|js) CODEQL_LANG="javascript-typescript" ;;
+            java|kotlin)                  CODEQL_LANG="java-kotlin"           ;;
+            c|cpp|"c++"|"c/c++")         CODEQL_LANG="c-cpp"                 ;;
+            csharp|"c#"|dotnet)          CODEQL_LANG="csharp"                ;;
+            python|py)                   CODEQL_LANG="python"                ;;
+            go|golang)                   CODEQL_LANG="go"                    ;;
+            ruby|rb)                     CODEQL_LANG="ruby"                  ;;
+            swift)                       CODEQL_LANG="swift"                 ;;
+            *)
+              echo "::warning::Unrecognized language '${RAW_LANG}'. Passing to CodeQL as-is."
+              CODEQL_LANG="${RAW_LANG}"
+              ;;
+          esac
+          echo "codeql-language=${CODEQL_LANG}" >> "$GITHUB_OUTPUT"
+
+          # ── Is this a pull request event? ────────────────────────────────────
+          # Dependency Review only has access to the diff on PR events.
+          IS_PR="false"
+          if [[ "${{ github.event_name }}" == "pull_request" || \
+                "${{ github.event_name }}" == "pull_request_target" ]]; then
+            IS_PR="true"
+          fi
+          echo "is-pull-request=${IS_PR}" >> "$GITHUB_OUTPUT"
+
+          # ── Effective dep-review flag (input AND is a PR) ─────────────────────
+          if [[ "${{ inputs.dependency-review-enable }}" == "true" && \
+                "${IS_PR}" == "true" ]]; then
+            echo "dep-review-effective=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dep-review-effective=false" >> "$GITHUB_OUTPUT"
+            if [[ "${{ inputs.dependency-review-enable }}" == "true" && \
+                  "${IS_PR}" == "false" ]]; then
+              echo "::notice::Dependency Review skipped — only runs on pull_request events."
+            fi
+          fi
+
+  # ============================================================================
+  # SAST — CodeQL
+  # Deep semantic analysis: builds a queryable model of the codebase and runs
+  # data-flow / taint-tracking queries (SQL injection, XSS, path traversal, etc.)
+  # Findings appear in the GitHub Security tab as SARIF alerts.
+  # ============================================================================
+  codeql:
+    name: "SAST · CodeQL"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      actions:         read
+      contents:        read
+      security-events: write
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages:   ${{ needs.setup.outputs.codeql-language }}
+          queries:     ${{ inputs.codeql-queries }}
+          config-file: ${{ inputs.codeql-config-file != '' && inputs.codeql-config-file || null }}
+          paths: |
+            ${{ inputs.scan-path }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Analyze
+        id: analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ needs.setup.outputs.codeql-language }}"
+          upload: true
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.analyze.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  # ============================================================================
+  # SAST — Semgrep
+  # Fast AST/pattern-based scanning: 2,500+ rules, framework-aware
+  # (React, Express, Django, etc.), OWASP Top 10, diff-aware on PRs.
+  # Runs fully offline by default — no token required.
+  # ============================================================================
+  semgrep:
+    name: "SAST · Semgrep"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.semgrep-enable == true
+    permissions:
+      contents:        read
+      security-events: write
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    container:
+      image: semgrep/semgrep:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan
+        id: scan
+        shell: sh
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.semgrep-app-token }}
+        run: |
+          if [ -n "${SEMGREP_APP_TOKEN}" ]; then
+            RULES=""
+            echo "::notice::Semgrep → Cloud Platform policies."
+          else
+            RULES="${{ inputs.semgrep-rules }}"
+            echo "::notice::Semgrep → offline ruleset: ${RULES}"
+          fi
+          semgrep scan \
+            --sarif --output semgrep.sarif \
+            ${RULES:+--config "$RULES"} \
+            --error \
+            "${{ inputs.scan-path }}"
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+        continue-on-error: true
+
+      - name: Set status
+        id: set-status
+        if: always()
+        shell: sh
+        run: |
+          [ "${{ steps.scan.outcome }}" = "success" ] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  semgrep-skip:
+    name: "SAST · Semgrep (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.semgrep-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "Semgrep skipped."
+
+  # ============================================================================
+  # SECRETS — Gitleaks
+  # Scans full git history for accidentally committed secrets: API keys, tokens,
+  # passwords, private keys, connection strings. History scanning catches secrets
+  # that were committed and later deleted from the working tree.
+  # ============================================================================
+  gitleaks:
+    name: "Secrets · Gitleaks"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.gitleaks-enable == true
+    permissions:
+      contents: read
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan
+        id: scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          config-path: ${{ inputs.gitleaks-config-path != '' && inputs.gitleaks-config-path || null }}
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.scan.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  gitleaks-skip:
+    name: "Secrets · Gitleaks (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.gitleaks-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "Gitleaks skipped."
+
+  # ============================================================================
+  # SUPPLY CHAIN — Dependency Review
+  # Compares the dependency diff of a PR against the GitHub Advisory Database.
+  # Blocks merges that introduce new vulnerable packages.
+  # Only runs on pull_request events — skipped on push/schedule automatically.
+  # ============================================================================
+  dependency-review:
+    name: "Supply Chain · Dependency Review"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: needs.setup.outputs.dep-review-effective == 'true'
+    permissions:
+      contents:      read
+      pull-requests: write   # to post PR comment with findings
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Review dependencies
+        id: review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: ${{ inputs.dependency-review-severity }}
+          # Post a summary comment on the PR with vulnerable packages found
+          comment-summary-in-pr: always
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.review.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  dependency-review-skip:
+    name: "Supply Chain · Dependency Review (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: needs.setup.outputs.dep-review-effective == 'false'
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "Dependency Review skipped (not a PR or disabled)."
+
+  # ============================================================================
+  # SUPPLY CHAIN — OSV Scanner
+  # Checks all lockfiles and manifests against the OSV (Open Source
+  # Vulnerabilities) database — covers npm, PyPI, Go modules, Maven,
+  # Cargo, NuGet, RubyGems, and more. Runs on every push (not just PRs),
+  # catching newly disclosed CVEs in already-merged dependencies.
+  # ============================================================================
+  osv-scan:
+    name: "Supply Chain · OSV Scanner"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.osv-scan-enable == true
+    permissions:
+      contents:        read
+      security-events: write
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run OSV Scanner
+        id: scan
+        uses: google/osv-scanner-action/osv-scanner-action@v2
+        with:
+          scan-args: |-
+            --recursive
+            --format sarif
+            --output osv-results.sarif
+            ${{ inputs.scan-path }}
+        continue-on-error: true   # capture status ourselves below
+
+      - name: Upload OSV SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv-results.sarif
+          category: osv-scanner
+        continue-on-error: true
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.scan.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  osv-scan-skip:
+    name: "Supply Chain · OSV Scanner (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.osv-scan-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "OSV Scanner skipped."
+
+  # ============================================================================
+  # SUPPLY CHAIN — License Compliance
+  # Scans dependency licenses and fails if any package uses a license outside
+  # the allow-list. Protects commercial projects from accidentally importing
+  # copyleft (GPL) or unknown-license dependencies.
+  # Uses `licensee` — the same tool GitHub uses internally for license detection.
+  # ============================================================================
+  license-check:
+    name: "Supply Chain · License Check"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.license-check-enable == true
+    permissions:
+      contents: read
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install licensee
+        run: gem install licensee
+
+      - name: Check licenses
+        id: check
+        shell: bash
+        run: |
+          ALLOW_LIST="${{ inputs.license-allow-list }}"
+          echo "Allowed licenses: ${ALLOW_LIST}"
+
+          # Build licensee output for all dependencies
+          # licensee detects the project license; for deep dep scanning we use
+          # a custom script over the lockfile / package manifests.
+
+          VIOLATIONS=()
+
+          # ── npm / yarn (package.json) ─────────────────────────────────────────
+          if command -v node &>/dev/null && [ -f package.json ]; then
+            echo "::group::Scanning npm dependencies"
+            npm install --ignore-scripts --silent 2>/dev/null || true
+            # Use license-checker-rseidelsohn (zero-dependency, built on npm)
+            npx --yes license-checker-rseidelsohn \
+              --onlyAllow "${ALLOW_LIST}" \
+              --excludePrivatePackages \
+              --summary \
+              2>&1 | tee npm-licenses.txt || VIOLATIONS+=("npm")
+            echo "::endgroup::"
+          fi
+
+          # ── Python (requirements.txt / pyproject.toml) ────────────────────────
+          if command -v pip &>/dev/null && \
+             { [ -f requirements.txt ] || [ -f pyproject.toml ]; }; then
+            echo "::group::Scanning Python dependencies"
+            pip install pip-licenses --quiet
+            pip-licenses \
+              --allow-only="${ALLOW_LIST//,/;}" \
+              --format=plain-vertical \
+              2>&1 | tee python-licenses.txt || VIOLATIONS+=("python")
+            echo "::endgroup::"
+          fi
+
+          # ── Go (go.mod) ───────────────────────────────────────────────────────
+          if command -v go &>/dev/null && [ -f go.mod ]; then
+            echo "::group::Scanning Go dependencies"
+            go install github.com/google/go-licenses@latest 2>/dev/null || true
+            IFS=',' read -ra ALLOWED <<< "${ALLOW_LIST}"
+            ALLOWED_PATTERN=$(IFS='|'; echo "${ALLOWED[*]}")
+            $(go env GOPATH)/bin/go-licenses check \
+              ./... \
+              --allowed_licenses="${ALLOW_LIST}" \
+              2>&1 | tee go-licenses.txt || VIOLATIONS+=("go")
+            echo "::endgroup::"
+          fi
+
+          # ── Report ────────────────────────────────────────────────────────────
+          if [ ${#VIOLATIONS[@]} -gt 0 ]; then
+            echo "::error::License violations detected in: ${VIOLATIONS[*]}"
+            echo "::error::Review the license reports above and update your dependencies or allow-list."
+            exit 1
+          else
+            echo "::notice::All dependency licenses are compliant ✓"
+          fi
+
+      - name: Upload license reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-reports
+          path: |
+            npm-licenses.txt
+            python-licenses.txt
+            go-licenses.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.check.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  license-check-skip:
+    name: "Supply Chain · License Check (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.license-check-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "License check skipped."
+
+  # ============================================================================
+  # CONTAINER — Trivy image scan
+  # Scans a built container image for OS-level CVEs, package vulnerabilities,
+  # and misconfigurations. Requires the image to already be built and pushed
+  # (or loaded into the runner's Docker daemon) before this workflow is called.
+  # Enable with container-enable: true and provide container-image.
+  # ============================================================================
+  container-scan:
+    name: "Container · Trivy Image Scan"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.container-enable == true
+    permissions:
+      contents:        read
+      security-events: write
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan image with Trivy
+        id: scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref:    ${{ inputs.container-image }}
+          format:       sarif
+          output:       trivy-container.sarif
+          severity:     ${{ inputs.container-severity }}
+          exit-code:    "1"       # fail on findings at or above severity
+          ignore-unfixed: true    # skip CVEs with no available fix
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-container.sarif
+          category: trivy-container
+        continue-on-error: true
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.scan.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  container-scan-skip:
+    name: "Container · Trivy Image Scan (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.container-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "Container scan skipped (container-enable=false)."
+
+  # ============================================================================
+  # IaC — Trivy config scan
+  # Scans Terraform, Helm charts, CloudFormation templates, Dockerfiles, and
+  # Kubernetes manifests for security misconfigurations:
+  #   · Open storage buckets / overly permissive IAM
+  #   · Missing encryption at rest / in transit
+  #   · Containers running as root
+  #   · Missing network policies, resource limits, etc.
+  # Enable with iac-enable: true. Point iac-path at your infra directory.
+  # ============================================================================
+  iac-scan:
+    name: "IaC · Trivy Config Scan"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.iac-enable == true
+    permissions:
+      contents:        read
+      security-events: write
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan IaC with Trivy
+        id: scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type:  config
+          scan-ref:   ${{ inputs.iac-path }}
+          format:     sarif
+          output:     trivy-iac.sarif
+          severity:   ${{ inputs.iac-severity }}
+          exit-code:  "1"
+
+      - name: Upload Trivy IaC SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-iac.sarif
+          category: trivy-iac
+        continue-on-error: true
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.scan.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  iac-scan-skip:
+    name: "IaC · Trivy Config Scan (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.iac-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "IaC scan skipped (iac-enable=false)."
+
+  # ============================================================================
+  # SCORECARD — OpenSSF Security Scorecard
+  # Grades the repository's security hygiene across 18+ checks:
+  #   · Branch protection rules enforced
+  #   · Dependency update tooling active (Dependabot, Renovate)
+  #   · Signed releases / commits
+  #   · CI test coverage present
+  #   · Dangerous workflow patterns absent
+  #   · Contributors using MFA
+  # Results appear in the GitHub Security tab and as a badge.
+  # Most meaningful on the default branch — auto-skipped on feature branches.
+  # ============================================================================
+  scorecard:
+    name: "Scorecard · OpenSSF"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.scorecard-enable == true
+    permissions:
+      contents:         read
+      actions:          read
+      id-token:         write   # required for scorecard attestation
+      security-events:  write
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # scorecard best practice
+
+      - name: Run Scorecard
+        id: scan
+        uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file:   scorecard-results.sarif
+          results_format: sarif
+          # SCORECARD_TOKEN is optional; improves rate limits on private repos.
+          # Falls back to GITHUB_TOKEN automatically.
+          repo_token: ${{ github.token }}
+          publish_results: true   # publish to https://securityscorecards.dev
+
+      - name: Upload Scorecard SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: scorecard-results.sarif
+          category: scorecard
+        continue-on-error: true
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.scan.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  scorecard-skip:
+    name: "Scorecard · OpenSSF (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.scorecard-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "Scorecard skipped."
+
+  # ============================================================================
+  # SBOM — Syft (Software Bill of Materials)
+  # Generates a complete inventory of all packages and dependencies in the
+  # codebase or container image. Required for:
+  #   · FedRAMP and SOC2 compliance audits
+  #   · EU Cyber Resilience Act (CRA) obligations
+  #   · Supply chain incident response (quickly assess blast radius of a CVE)
+  # Output is uploaded as a workflow artifact and optionally attached to
+  # GitHub Releases when triggered on a release event.
+  # ============================================================================
+  sbom:
+    name: "SBOM · Syft"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.sbom-enable == true
+    permissions:
+      contents: write   # write needed to attach to releases
+
+    outputs:
+      status: ${{ steps.set-status.outputs.status }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM with Syft
+        id: generate
+        uses: anchore/sbom-action@v0
+        with:
+          path:           ${{ inputs.scan-path }}
+          format:         ${{ inputs.sbom-format }}
+          artifact-name:  sbom.${{ inputs.sbom-format == 'cyclonedx-json' && 'cdx.json' || inputs.sbom-format == 'spdx-json' && 'spdx.json' || 'sbom.txt' }}
+          # Automatically attaches SBOM to GitHub Releases when triggered by
+          # a release event — no extra configuration needed.
+          upload-release-assets: true
+
+      - name: Set status
+        id: set-status
+        if: always()
+        run: |
+          [[ "${{ steps.generate.outcome }}" == "success" ]] \
+            && echo "status=success" >> "$GITHUB_OUTPUT" \
+            || echo "status=failure" >> "$GITHUB_OUTPUT"
+
+  sbom-skip:
+    name: "SBOM · Syft (skipped)"
+    needs: setup
+    runs-on: ${{ inputs.runner }}
+    if: inputs.sbom-enable == false
+    outputs:
+      status: skipped
+    steps:
+      - run: echo "SBOM generation skipped."
+
+  # ============================================================================
+  # SECURITY GATE — fan-in
+  # Aggregates all scanner results, prints a summary table, and enforces the
+  # fail-on-error policy. This is the single job callers should add to their
+  # branch protection required status checks.
+  # ============================================================================
+  security-gate:
+    name: Security Gate
+    needs:
+      - codeql
+      - semgrep
+      - semgrep-skip
+      - gitleaks
+      - gitleaks-skip
+      - dependency-review
+      - dependency-review-skip
+      - osv-scan
+      - osv-scan-skip
+      - license-check
+      - license-check-skip
+      - container-scan
+      - container-scan-skip
+      - iac-scan
+      - iac-scan-skip
+      - scorecard
+      - scorecard-skip
+      - sbom
+      - sbom-skip
+    if: always()
+    runs-on: ${{ inputs.runner }}
+
+    outputs:
+      passed: ${{ steps.evaluate.outputs.passed }}
+
+    steps:
+      - name: Evaluate all scanner results
+        id: evaluate
+        shell: bash
+        run: |
+          # ── Coalesce real vs skip outputs ─────────────────────────────────────
+          # Pattern: real job output + skip job output; only one will be non-empty.
+          CODEQL="${{ needs.codeql.outputs.status }}"
+          SEMGREP="${{ needs.semgrep.outputs.status }}${{ needs.semgrep-skip.outputs.status }}"
+          GITLEAKS="${{ needs.gitleaks.outputs.status }}${{ needs.gitleaks-skip.outputs.status }}"
+          DEP_REVIEW="${{ needs.dependency-review.outputs.status }}${{ needs.dependency-review-skip.outputs.status }}"
+          OSV="${{ needs.osv-scan.outputs.status }}${{ needs.osv-scan-skip.outputs.status }}"
+          LICENSES="${{ needs.license-check.outputs.status }}${{ needs.license-check-skip.outputs.status }}"
+          CONTAINER="${{ needs.container-scan.outputs.status }}${{ needs.container-scan-skip.outputs.status }}"
+          IAC="${{ needs.iac-scan.outputs.status }}${{ needs.iac-scan-skip.outputs.status }}"
+          SCORECARD="${{ needs.scorecard.outputs.status }}${{ needs.scorecard-skip.outputs.status }}"
+          SBOM="${{ needs.sbom.outputs.status }}${{ needs.sbom-skip.outputs.status }}"
+
+          # ── Summary table ──────────────────────────────────────────────────────
+          echo ""
+          echo "╔══════════════════════════════════════════════════════════╗"
+          echo "║              Security Hardening Gate Summary             ║"
+          echo "╠══════════════════════════════════╦═══════════════════════╣"
+          echo "║  Domain / Scanner                ║  Status               ║"
+          echo "╠══════════════════════════════════╬═══════════════════════╣"
+          printf "║  %-32s║  %-21s║\n" "SAST · CodeQL"                "${CODEQL}"
+          printf "║  %-32s║  %-21s║\n" "SAST · Semgrep"               "${SEMGREP}"
+          echo "╠══════════════════════════════════╬═══════════════════════╣"
+          printf "║  %-32s║  %-21s║\n" "Secrets · Gitleaks"           "${GITLEAKS}"
+          echo "╠══════════════════════════════════╬═══════════════════════╣"
+          printf "║  %-32s║  %-21s║\n" "Supply Chain · Dep Review"    "${DEP_REVIEW}"
+          printf "║  %-32s║  %-21s║\n" "Supply Chain · OSV Scanner"   "${OSV}"
+          printf "║  %-32s║  %-21s║\n" "Supply Chain · Licenses"      "${LICENSES}"
+          printf "║  %-32s║  %-21s║\n" "Supply Chain · SCA"           "→ Dependabot (async)"
+          echo "╠══════════════════════════════════╬═══════════════════════╣"
+          printf "║  %-32s║  %-21s║\n" "Container · Trivy"            "${CONTAINER}"
+          printf "║  %-32s║  %-21s║\n" "IaC · Trivy"                  "${IAC}"
+          echo "╠══════════════════════════════════╬═══════════════════════╣"
+          printf "║  %-32s║  %-21s║\n" "Scorecard · OpenSSF"          "${SCORECARD}"
+          echo "╠══════════════════════════════════╬═══════════════════════╣"
+          printf "║  %-32s║  %-21s║\n" "SBOM · Syft"                  "${SBOM}"
+          echo "╚══════════════════════════════════╩═══════════════════════╝"
+          echo ""
+
+          # ── Pass/fail evaluation ──────────────────────────────────────────────
+          PASSED="true"
+          FAILED_SCANNERS=()
+
+          for ENTRY in \
+            "CodeQL:${CODEQL}" \
+            "Semgrep:${SEMGREP}" \
+            "Gitleaks:${GITLEAKS}" \
+            "Dependency-Review:${DEP_REVIEW}" \
+            "OSV-Scanner:${OSV}" \
+            "License-Check:${LICENSES}" \
+            "Container-Scan:${CONTAINER}" \
+            "IaC-Scan:${IAC}" \
+            "Scorecard:${SCORECARD}" \
+            "SBOM:${SBOM}"; do
+            NAME="${ENTRY%%:*}"
+            STATUS="${ENTRY##*:}"
+            if [[ "${STATUS}" == "failure" ]]; then
+              PASSED="false"
+              FAILED_SCANNERS+=("${NAME}")
+            fi
+          done
+
+          echo "passed=${PASSED}" >> "$GITHUB_OUTPUT"
+
+          if [[ "${PASSED}" == "false" ]]; then
+            FAILED_LIST=$(IFS=', '; echo "${FAILED_SCANNERS[*]}")
+            if [[ "${{ inputs.fail-on-error }}" == "true" ]]; then
+              echo "::error::Security gate failed — findings in: ${FAILED_LIST}"
+              echo "::error::Review the Security tab and job logs for details."
+              exit 1
+            else
+              echo "::warning::Security gate findings (advisory mode) — ${FAILED_LIST}"
+              echo "::warning::Set fail-on-error=true to enforce blocking."
+            fi
+          else
+            echo "::notice::Security gate passed — all enabled scanners clean ✓"
+          fi
