@@ -17,7 +17,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write          # write required by sbom job (attaches SBOM to GitHub Releases)
   id-token: write          # required for OIDC AWS auth in future deploy steps
   security-events: write   # required for SARIF uploads (CodeQL, Semgrep, OSV, Scorecard)
   pull-requests: write     # required for dependency-review PR comment
@@ -74,7 +74,7 @@ jobs:
     secrets: inherit
     permissions:
       actions:         read
-      contents:        read
+      contents:        write   # write required by sbom job (attaches SBOM to GitHub Releases)
       id-token:        write   # required for OpenSSF Scorecard attestation
       security-events: write   # required for SARIF uploads to GitHub Security tab
       pull-requests:   write   # required for dependency-review PR comment
