@@ -499,6 +499,7 @@ jobs:
           fi
           semgrep scan \
             --sarif --output semgrep.sarif \
+            --text \
             ${RULES:+--config "$RULES"} \
             --error \
             "${{ inputs.scan-path }}"
@@ -654,7 +655,7 @@ jobs:
 
       - name: Run OSV Scanner
         id: scan
-        uses: google/osv-scanner-action/osv-scanner-action@v2
+        uses: google/osv-scanner-action/osv-scanner-action@v1
         with:
           scan-args: |-
             --recursive
@@ -712,7 +713,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install licensee
-        run: gem install licensee
+        run: sudo gem install licensee
 
       - name: Check licenses
         id: check
@@ -968,7 +969,7 @@ jobs:
           # SCORECARD_TOKEN is optional; improves rate limits on private repos.
           # Falls back to GITHUB_TOKEN automatically.
           repo_token: ${{ github.token }}
-          publish_results: true   # publish to https://securityscorecards.dev
+          publish_results: false  # reusable-workflow context fails scorecard's single-job verification
 
       - name: Upload Scorecard SARIF
         if: always()
