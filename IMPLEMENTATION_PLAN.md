@@ -631,8 +631,8 @@ and reported your findings.
 | 4b | Mobile customer waitlist | `specs/04b-waitlist-customer-mobile.md` | ✅ Complete | 2026-05-18 |
 | 4c | Mobile business waitlist | `specs/04c-waitlist-business-mobile.md` | ✅ Complete | 2026-05-18 |
 | 5a | Notification Terraform | `specs/05a-notification-terraform.md` | ✅ Complete | 2026-05-18 |
-| 5b | Email rendering | `specs/05b-email-rendering.md` | ⬜ Not Started | — |
-| 5c | Notification consumer | `specs/05c-notification-consumer.md` | ⬜ Not Started | — |
+| 5b | Email rendering | `specs/05b-email-rendering.md` | ✅ Complete | 2026-05-18 |
+| 5c | Notification consumer | `specs/05c-notification-consumer.md` | ✅ Complete | 2026-05-18 |
 | 6a | Backend notifications endpoints | `specs/06a-notifications-backend.md` | ⬜ Not Started | — |
 | 6b | Mobile notifications + badge | `specs/06b-notifications-mobile.md` | ⬜ Not Started | — |
 | 7a | Backend marketing endpoints | `specs/07a-marketing-backend.md` | ⬜ Not Started | — |

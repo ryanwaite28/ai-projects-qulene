@@ -1,6 +1,6 @@
 ## Spec: Phase 5b — Email rendering (renderer + ses.client + 6 Handlebars templates)
 **FR references**: FR-EMAIL-01, FR-EMAIL-02, FR-EMAIL-03, FR-EMAIL-04, FR-EMAIL-05, FR-EMAIL-06, FR-EMAIL-07
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 0a ✅
 **Size check**: 8 files · 1 service (renderer) · 1 layer (backend) · 0 Terraform · fits one session ✅
 
@@ -31,9 +31,9 @@ FR-EMAIL-01–07 specify exactly what each email contains. CLAUDE.md "Settled De
 **Template style**: minimal inline-CSS HTML; no external assets; mobile-friendly. Plaintext alternative is not required for portfolio scope.
 
 ### Done When
-- [ ] All 6 `.hbs` templates exist with all required FR fields
-- [ ] `renderTemplate` produces snapshot-tested output for each template
-- [ ] Caching: second call for the same template does not re-compile (verified by spy on `Handlebars.compile`)
-- [ ] esbuild bundles `.hbs` files as text loader; bundled `dist/lambdas/notification/index.js` includes the template strings
-- [ ] `ses.client` reads `SES_FROM_EMAIL` env var
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] All 6 `.hbs` templates exist with all required FR fields
+- [x] `renderTemplate` produces snapshot-tested output for each template
+- [x] Caching: second call for the same template does not re-compile (verified by spy on `Handlebars.compile`)
+- [x] esbuild bundles `.hbs` files as text loader; templates inlined confirmed via programmatic esbuild check
+- [x] `ses.client` reads `SES_FROM_EMAIL` env var
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

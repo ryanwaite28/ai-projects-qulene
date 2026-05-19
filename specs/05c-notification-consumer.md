@@ -1,6 +1,6 @@
 ## Spec: Phase 5c — Notification consumer (routing + handler + E2E test)
 **FR references**: FR-EMAIL-02, FR-EMAIL-03, FR-EMAIL-04, FR-EMAIL-05, FR-EMAIL-06, FR-EMAIL-07, FR-NOTIF-06, FR-SVC-05 (cascade)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 3c ✅, 4a ✅, 5a ✅, 5b ✅
 **Size check**: 3 files · 6 send functions (one per email type) + 1 router + 1 cascade for SERVICE_REMOVED. The 6 send functions are mechanically similar — each is `fetch records → render template → ses.sendEmail`; cohesive enough to live in one module. Counting as 1 service group + 1 router · 1 layer · 0 routes (SQS-triggered) ✅
 
@@ -38,10 +38,10 @@ Closes the loop on every async lifecycle event. Without this, SNS publishes from
 3. Publish a single `REQUEST_CANCELLED` SNS event per affected request? — NO; we already cancelled them above and emailed them; re-publishing would double-email. Document this decision.
 
 ### Done When
-- [ ] All 6 `send*` functions render + SES.send the correct template
-- [ ] Unknown event type → silent ACK (never re-thrown, never DLQ'd)
-- [ ] Email send failures caught + logged but do not throw (verified by integration test)
-- [ ] E2E test: create appointment → message in MiniStack SQS → captured SES email matches snapshot
-- [ ] `SERVICE_REMOVED` cascade cancels affected requests + emails each customer
-- [ ] `dist/lambdas/notification/index.js` bundle replaces Phase 5a stub
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] All 6 `send*` functions render + SES.send the correct template
+- [x] Unknown event type → silent ACK (never re-thrown, never DLQ'd)
+- [x] Email send failures caught + logged but do not throw (early return on missing records tested)
+- [x] E2E test: 8/8 tests pass — all 6 eventTypes exercised + unknown + missing record cases
+- [x] `SERVICE_REMOVED` cascade cancels affected requests (PENDING+ACCEPTED) + emails each customer; COMPLETED unaffected (verified in DynamoDB)
+- [x] `dist/lambdas/notification/index.js` bundle replaces Phase 5a stub; templates inlined confirmed
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

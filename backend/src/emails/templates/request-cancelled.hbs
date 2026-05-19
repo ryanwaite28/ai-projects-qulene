@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: sans-serif; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 20px; color: #d97706; }
+    ul { line-height: 1.8; }
+    p { line-height: 1.6; }
+    .footer { margin-top: 32px; font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Appointment Request Cancelled</h1>
+  <p>A customer has cancelled their appointment request:</p>
+  <ul>
+    <li><strong>Customer:</strong> {{customerFirstName}}</li>
+    <li><strong>Service:</strong> {{serviceName}}</li>
+    <li><strong>Proposed time:</strong> {{formattedProposedAt}}</li>
+  </ul>
+  <p>The time slot is now available for other bookings.</p>
+  <p class="footer">Qulene &mdash; Waitlist &amp; Appointment Manager</p>
+</body>
+</html>

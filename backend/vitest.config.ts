@@ -1,6 +1,18 @@
+import { readFileSync } from 'fs';
 import { defineConfig } from 'vitest/config';
+import type { Plugin } from 'vite';
+
+const hbsTextPlugin: Plugin = {
+  name: 'hbs-text',
+  transform(_code: string, id: string) {
+    if (id.endsWith('.hbs')) {
+      return { code: `export default ${JSON.stringify(readFileSync(id, 'utf-8'))}` };
+    }
+  },
+};
 
 export default defineConfig({
+  plugins: [hbsTextPlugin],
   test: {
     include: ['src/**/__tests__/**/*.test.ts', 'tests/**/*.test.ts'],
     env: {
@@ -17,6 +29,9 @@ export default defineConfig({
       NOTIFICATIONS_TABLE: 'qulene-local-notifications',
       WAITLIST_ENTRIES_TABLE: 'qulene-local-waitlist-entries',
       SNS_TOPIC_ARN: 'arn:aws:sns:us-east-1:000000000000:qulene-local-events',
+      SES_FROM_EMAIL: 'no-reply@qulene.com',
+      SES_ENDPOINT: 'http://localhost:4566',
+      SECRETS_NAME: 'qulene-local-secrets',
     },
   },
 });
