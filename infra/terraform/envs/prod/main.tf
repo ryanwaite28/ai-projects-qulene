@@ -45,6 +45,28 @@ data "aws_ssm_parameter" "acm_certificate_arn" {
 }
 
 ###############################################################################
+# Phase 9b — Observability: DLQ alarm + per-Lambda error rate alarms
+###############################################################################
+
+module "observability" {
+  source = "../../modules/observability"
+
+  environment   = var.environment
+  dlq_arn       = module.sqs.dlq_arn
+  admin_email   = var.admin_email
+  lambda_function_names = [
+    "qulene-${var.environment}-lambda-auth",
+    "qulene-${var.environment}-lambda-businesses",
+    "qulene-${var.environment}-lambda-services",
+    "qulene-${var.environment}-lambda-appointments",
+    "qulene-${var.environment}-lambda-waitlist",
+    "qulene-${var.environment}-lambda-notification",
+    "qulene-${var.environment}-lambda-users",
+    "qulene-${var.environment}-lambda-contact",
+  ]
+}
+
+###############################################################################
 # Phase 8f — Web app SPA hosting (S3 + CloudFront + Route 53)
 ###############################################################################
 

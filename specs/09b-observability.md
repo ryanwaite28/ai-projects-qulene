@@ -1,6 +1,6 @@
 ## Spec: Phase 9b — CloudWatch log groups + alarms + DLQ monitoring
 **FR references**: NFR-06 (observability)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 5a ✅
 **Size check**: 2 files · 0 service functions · 1 layer (Terraform) · ≤ 6 resource groups (log groups module + alarms module) ✅
 
@@ -24,9 +24,9 @@ NFR-06 + PROJECT.md Section 9.2 + CLAUDE.md DLQ requirement: silent failures are
 **No custom dashboards in this phase** (deferred to Phase 10 if scope allows). The default CloudWatch console + the configured alarms are sufficient for portfolio observability.
 
 ### Done When
-- [ ] Every Lambda has an explicit log group with `retention_in_days = 14`
-- [ ] DLQ depth alarm provisioned + subscribed to alarms SNS topic
-- [ ] Per-Lambda error rate alarm provisioned
-- [ ] Admin email subscribed to alarms SNS topic
-- [ ] Verify by manually pushing a malformed message to the queue → DLQ depth alarm fires within 5 minutes
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Every Lambda has an explicit log group with `retention_in_days = 14`
+- [x] DLQ depth alarm provisioned + subscribed to alarms SNS topic
+- [x] Per-Lambda error rate alarm provisioned
+- [x] Admin email subscribed to alarms SNS topic
+- [x] Verify by manually pushing a malformed message to the queue → DLQ depth alarm fires within 5 minutes
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

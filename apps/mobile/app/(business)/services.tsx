@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ErrorState } from '../../components/ui/ErrorState';
 import { useBusinessApi } from '../../hooks/useBusinessApi';
 import { useApi, ApiError } from '../../hooks/useApi';
 import type { Service, WaitlistEntry } from '@qulene/api-types';
@@ -215,11 +216,15 @@ export default function ServicesScreen() {
         <Text className="text-2xl font-bold text-gray-900">Services</Text>
       </View>
 
-      {error && (
-        <View className="mx-6 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
-          <Text className="text-red-700 text-sm">{error}</Text>
-        </View>
-      )}
+      {error && services.length === 0 ? (
+        <ErrorState message={error} onRetry={loadServices} />
+      ) : (
+        <>
+          {error && (
+            <View className="mx-6 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+              <Text className="text-red-700 text-sm">{error}</Text>
+            </View>
+          )}
 
       <ScrollView className="flex-1 px-6">
         {services.length === 0 ? (
@@ -310,6 +315,8 @@ export default function ServicesScreen() {
       >
         <Text className="text-white text-3xl leading-none">+</Text>
       </TouchableOpacity>
+        </>
+      )}
 
       {/* Create / Edit Modal */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">

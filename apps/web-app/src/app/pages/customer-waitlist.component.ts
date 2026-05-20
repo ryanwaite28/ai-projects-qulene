@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import type { WaitlistStatus } from '@qulene/api-types';
 import { WaitlistService } from '../services/waitlist.service';
 import type { WaitlistEntry } from '../services/waitlist.service';
+import { ErrorStateComponent } from '../components/error-state.component';
 
 interface StatusStyle {
   label: string;
@@ -20,7 +21,7 @@ const STATUS_STYLES: Record<WaitlistStatus, StatusStyle> = {
 @Component({
   selector: 'app-customer-waitlist',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ErrorStateComponent],
   template: `
     <div class="min-h-screen bg-gray-50 px-4 py-10">
       <div class="mx-auto max-w-3xl">
@@ -35,7 +36,9 @@ const STATUS_STYLES: Record<WaitlistStatus, StatusStyle> = {
           </button>
         </div>
 
-        @if (loading() && entries().length === 0) {
+        @if (fetchError()) {
+          <app-error-state [message]="fetchError()!" (retry)="retry()" />
+        } @else if (loading() && entries().length === 0) {
           <div class="space-y-3">
             @for (i of skeletonItems; track i) {
               <div class="h-20 animate-pulse rounded-xl bg-gray-200"></div>
@@ -164,6 +167,7 @@ export class CustomerWaitlistComponent implements OnInit {
   readonly modalSubmitting = signal(false);
   readonly modalError = signal<string | null>(null);
   readonly confirmLeaveId = signal<string | null>(null);
+  readonly fetchError = signal<string | null>(null);
 
   readonly skeletonItems = [1, 2, 3];
 
@@ -240,14 +244,21 @@ export class CustomerWaitlistComponent implements OnInit {
     return iso.replace('T', ' ').slice(0, 16);
   }
 
+  retry(): void {
+    this.fetchError.set(null);
+    this.loadEntries();
+  }
+
   private loadEntries(): void {
     this.loading.set(true);
+    this.fetchError.set(null);
     this.waitlistService.listCustomerEntries().subscribe({
       next: (res) => {
         this.entries.set(res.data);
         this.loading.set(false);
       },
       error: () => {
+        this.fetchError.set('Failed to load waitlist entries');
         this.loading.set(false);
       },
     });

@@ -1,42 +1,78 @@
-## Spec: Phase 10b — Error handling + empty states + skeletons across both clients
-**FR references**: Phase 10 PROJECT.md items (error handling on all API failures)
-**Status**: ⬜ Not Started
-**Prerequisites**: 6b ✅, 8e3 ✅
-**Size check**: cross-cutting polish; no new components except shared `ErrorState` + `EmptyState` + `LoadingSkeleton` per client; ≤ 8 files · 1 layer per client · fits one session ✅
+## Spec: Phase 10b — Error handling + empty states (both clients)
+**FR references**: CLAUDE.md Mobile Code Standards (empty states + loading skeletons required on every list screen); CLAUDE.md Web Code Standards (same)
+**Status**: ✅ Implemented
+**Prerequisites**: 6b ✅, 8e3 ✅, 10a ✅
+**Size check**: split into 10b-a (infrastructure ✅) + 10b-b (screen touch-ups)
 
-### What
-Audit every list screen and form submission across both mobile and web for: missing loading skeleton, missing empty state, missing error rendering. Add reusable `ErrorState` / `EmptyState` / `LoadingSkeleton` components per client and apply them consistently. Improve global error UX (network failures, 5xx) with a toast/snackbar system in both clients.
+---
 
-### Why
-CLAUDE.md Mobile + Web standards mandate empty states + loading skeletons. Earlier phases enforced this per-screen, but consistency audit + a shared toast/error reporting layer is best done as a pass.
+## Sub-spec 10b-a — Error handling infrastructure
+**Status**: ✅ Implemented
 
 ### New / Modified Files
-- `apps/mobile/components/ui/{EmptyState.tsx,LoadingSkeleton.tsx,ErrorState.tsx,Toast.tsx}` — reusable; replace any ad-hoc inline implementations from earlier phases
-- `apps/web-app/src/app/components/{empty-state,loading-skeleton,error-state,toast}/*.component.ts` — same
-- Touch-up modifications: list screens missing skeleton or empty state get them; forms missing error rendering get inline error messages
-- `apps/mobile/lib/api.ts` (modify Phase 1c version) — global error handler categorizes errors (network / 5xx / 4xx) and surfaces them via the Toast system
-- `apps/web-app/src/app/interceptors/error.interceptor.ts` — new; categorizes HTTP errors and emits toast events via a `ToastService`
-
-### Behavior
-**Categorization**:
-- Network failure (no response) → toast: "Connection lost — please try again"
-- 500-class server error → toast: "Something went wrong on our end — please try again"
-- 4xx errors → handled inline by the calling component (not toast); the global handler skips these
-
-**Empty state semantics**: every list screen has one of these per data state: loading skeleton, empty state, error state, or content. Never an empty container.
-
-**Toast system**: a small queue (1–3 visible at a time); auto-dismiss after 4 seconds; tap-to-dismiss; render at bottom for mobile, top-right for web. Mobile uses a custom NativeWind component (not Expo's built-in); web uses signal-based component.
-
-**Audit checklist applied per screen**:
-- [ ] Has loading state (skeleton or spinner)
-- [ ] Has empty state for "no data" case
-- [ ] Has error state for "fetch failed" case
-- [ ] Form submissions show inline errors on 4xx
-- [ ] Network failures surface via toast
+- `apps/mobile/components/ui/ErrorState.tsx` — new; props `{ message, onRetry }`;  NativeWind-styled
+- `apps/mobile/hooks/useApi.ts` (modify) — `fetchWithNetworkGuard` wraps `fetch()`; `TypeError` → `Alert.alert` + rethrow as `ApiError('NETWORK_ERROR', ...)`
+- `apps/web-app/src/app/components/error-state.component.ts` — new; standalone; `@Input() message`; `@Output() retry`
+- `apps/web-app/src/app/services/toast.service.ts` — new; `toasts = signal<Toast[]>([])`; `show(message)` auto-dismisses after 4 s
+- `apps/web-app/src/app/components/toast.component.ts` — new; standalone; fixed top-right overlay; reads `ToastService.toasts()`
+- `apps/web-app/src/app/interceptors/error.interceptor.ts` — new; `status === 0` → network toast; `status >= 500` → server error toast; 4xx passes through
+- `apps/web-app/src/app/app.component.ts` (modify) — added `<app-toast />`
+- `apps/web-app/src/app/app.config.ts` (modify) — `withInterceptors([authInterceptor, errorInterceptor])`
 
 ### Done When
-- [ ] All 4 reusable components exist in each client
-- [ ] Every list screen audited and updated; checklist green per screen
-- [ ] Toast system works on both clients
-- [ ] Manual test: kill network mid-fetch → appropriate UX surfaced on every audited screen
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `ErrorState.tsx` exists under `apps/mobile/components/ui/`
+- [x] `error-state.component.ts` exists under `apps/web-app/src/app/components/`
+- [x] `useApi.ts`: network failure (TypeError) → Alert shown, ApiError('NETWORK_ERROR') thrown
+- [x] `ToastService` + `ToastComponent` compiled and wired into app root
+- [x] `error.interceptor.ts` registered in `app.config.ts`
+- [x] Sub-spec status ✅ Implemented
+
+---
+
+## Sub-spec 10b-b — Screen error state touch-ups
+**Status**: ✅ Implemented
+**Prerequisites**: 10b-a ✅
+
+### What
+Add `fetchError` state/signal to every list screen in both clients. On fetch failure the screen renders `<ErrorState>` with a retry callback instead of silently showing the empty state.
+
+### New / Modified Files
+Screen modifications — add `fetchError` state + `<ErrorState>` conditional (replaces silent empty-on-error):
+- `apps/mobile/app/(customer)/appointments.tsx` (modify)
+- `apps/mobile/app/(customer)/waitlist.tsx` (modify)
+- `apps/mobile/app/(customer)/notifications.tsx` (modify)
+- `apps/mobile/app/(business)/dashboard.tsx` (modify)
+- `apps/mobile/app/(business)/services.tsx` (modify)
+- `apps/mobile/app/(business)/waitlist/[serviceId].tsx` (modify)
+- `apps/web-app/src/app/pages/customer-appointments.component.ts` (modify)
+- `apps/web-app/src/app/pages/customer-waitlist.component.ts` (modify)
+- `apps/web-app/src/app/pages/customer-notifications.component.ts` (modify)
+- `apps/web-app/src/app/pages/business-dashboard.component.ts` (modify)
+- `apps/web-app/src/app/pages/business-services.component.ts` (modify)
+- `apps/web-app/src/app/pages/business-waitlist.component.ts` (modify)
+
+### Behavior
+**Mobile pattern** (per list screen):
+```tsx
+const [fetchError, setFetchError] = useState<string | null>(null);
+// in load() catch: setFetchError(err instanceof ApiError ? err.message : 'Something went wrong');
+// in render, before empty/list branch:
+{fetchError ? (
+  <ErrorState message={fetchError} onRetry={() => { setFetchError(null); load(undefined, true); }} />
+) : items.length === 0 ? ( /* empty state */ ) : ( /* list */ )}
+```
+
+**Web pattern** (per list page):
+```typescript
+error = signal<string | null>(null);
+// in catchError: this.error.set(message); return EMPTY;
+// in template: @if (error()) { <app-error-state [message]="error()" (retry)="load()" /> }
+```
+
+Skeleton renders during `isLoading` — unchanged. Error state replaces empty state when fetch fails.
+
+### Done When
+- [x] All 6 mobile list screens show `<ErrorState>` on fetch failure, not silent empty
+- [x] All 6 web list pages same
+- [x] `ng lint` exits 0 after changes
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

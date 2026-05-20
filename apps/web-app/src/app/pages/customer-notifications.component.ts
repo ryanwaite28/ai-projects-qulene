@@ -2,12 +2,13 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NotificationService } from '../services/notification.service';
 import { UserService } from '../services/user.service';
+import { ErrorStateComponent } from '../components/error-state.component';
 import type { Notification } from '../services/notification.service';
 
 @Component({
   selector: 'app-customer-notifications',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, ErrorStateComponent],
   template: `
     <div class="min-h-screen bg-gray-50">
       <!-- Customer top-nav -->
@@ -40,7 +41,9 @@ import type { Notification } from '../services/notification.service';
       <div class="mx-auto max-w-3xl px-4 py-10">
         <h1 class="mb-6 text-3xl font-bold text-gray-900">Notifications</h1>
 
-        @if (loading() && notifications().length === 0) {
+        @if (fetchError()) {
+          <app-error-state [message]="fetchError()!" (retry)="retry()" />
+        } @else if (loading() && notifications().length === 0) {
           <div class="space-y-3">
             @for (i of skeletonItems; track i) {
               <div class="h-16 animate-pulse rounded-xl bg-gray-200"></div>
@@ -88,6 +91,7 @@ export class CustomerNotificationsComponent implements OnInit {
   readonly loading = signal(false);
   readonly nextCursor = signal<string | null>(null);
   readonly unreadCount = signal(0);
+  readonly fetchError = signal<string | null>(null);
 
   readonly skeletonItems = [1, 2, 3];
 
@@ -127,8 +131,14 @@ export class CustomerNotificationsComponent implements OnInit {
     return iso.replace('T', ' ').slice(0, 16);
   }
 
+  retry(): void {
+    this.fetchError.set(null);
+    this.loadNotifications(true);
+  }
+
   private loadNotifications(reset: boolean): void {
     this.loading.set(true);
+    if (reset) this.fetchError.set(null);
     const cursor = reset ? undefined : (this.nextCursor() ?? undefined);
 
     this.notificationService.listNotifications(cursor).subscribe({
@@ -142,6 +152,7 @@ export class CustomerNotificationsComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
+        this.fetchError.set('Failed to load notifications');
         this.loading.set(false);
       },
     });

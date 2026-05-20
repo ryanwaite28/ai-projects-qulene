@@ -20,3 +20,9 @@ variable "environment" {
     error_message = "environment must be \"dev\" or \"prod\"."
   }
 }
+
+variable "admin_email" {
+  description = "Admin email address for contact form and alarm notifications"
+  type        = string
+  default     = "ryanwaite28@gmail.com"
+}

@@ -1,6 +1,6 @@
 ## Spec: Phase 9c — Secrets Manager + IAM least-privilege audit
 **FR references**: NFR-07 (security)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 5a ✅, 1b ✅
 **Size check**: 2 files · 0 service functions · 1 layer (Terraform + audit script) · fits one session ✅
 
@@ -43,8 +43,8 @@ Each Lambda reads the secret at cold start via `GetSecretValue` and caches the p
 Audit script confirms each role's policy matches this matrix exactly.
 
 ### Done When
-- [ ] `qulene-{env}-secrets` contains all required keys
-- [ ] All Lambda IAM roles match Section 5.8 with no wildcards beyond what's listed
-- [ ] `audit-iam.sh dev` exits 0
-- [ ] No secrets in `process.env.*` (all reads via `getSecretValue`)
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `qulene-{env}-secrets` contains all required keys
+- [x] All Lambda IAM roles match Section 5.8 with no wildcards beyond what's listed
+- [x] `audit-iam.sh dev` exits 0
+- [x] No secrets in `process.env.*` (all reads via `getSecretValue`)
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

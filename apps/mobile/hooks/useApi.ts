@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getCurrentSession, cognitoSignOut } from '../lib/cognito';
 import * as SecureStore from 'expo-secure-store';
@@ -27,6 +28,18 @@ export function useApi() {
     redirectingRef.current = false;
   }, [router]);
 
+  const fetchWithNetworkGuard = useCallback(async (
+    url: string,
+    init: RequestInit,
+  ): Promise<Response> => {
+    try {
+      return await fetch(url, init);
+    } catch {
+      Alert.alert('Connection Error', 'Connection lost — please try again');
+      throw new ApiError('NETWORK_ERROR', 'Connection lost');
+    }
+  }, []);
+
   const request = useCallback(async <T>(
     path: string,
     init?: RequestInit,
@@ -37,7 +50,7 @@ export function useApi() {
       throw new ApiError('UNAUTHORIZED', 'No active session');
     }
 
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetchWithNetworkGuard(`${API_URL}${path}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -58,7 +71,7 @@ export function useApi() {
     }
 
     return json.data as T;
-  }, [handleUnauthorized]);
+  }, [handleUnauthorized, fetchWithNetworkGuard]);
 
   const requestWithCursor = useCallback(async <T>(
     path: string,
@@ -70,7 +83,7 @@ export function useApi() {
       throw new ApiError('UNAUTHORIZED', 'No active session');
     }
 
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetchWithNetworkGuard(`${API_URL}${path}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -87,7 +100,7 @@ export function useApi() {
     const json = await response.json();
     if (json.error) throw new ApiError(json.error.code, json.error.message);
     return { data: json.data as T, nextCursor: json.nextCursor ?? null };
-  }, [handleUnauthorized]);
+  }, [handleUnauthorized, fetchWithNetworkGuard]);
 
   return { request, requestWithCursor };
 }

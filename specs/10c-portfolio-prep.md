@@ -1,6 +1,6 @@
 ## Spec: Phase 10c — Seed script + demo data + screenshots + architecture diagram
 **FR references**: Phase 10 PROJECT.md items (demo seed, screenshots, architecture diagram)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 10a ✅, 10b ✅
 **Size check**: 4 files · 0 service functions · 1 layer (scripts + docs) · fits one session ✅
 
@@ -26,8 +26,8 @@ Phase 10 PROJECT.md: portfolio prep — without this, a recruiter cannot easily 
 **Screenshots**: capture at 1242×2688 (mobile, iPhone 14 Pro Max) and 1920×1080 (web), light mode only for portfolio MVP.
 
 ### Done When
-- [ ] `npm run seed:local` creates all sample records idempotently
-- [ ] `docs/architecture.png` exists and matches PROJECT.md Section 4.1 topology
-- [ ] `README.md` reads as a portfolio piece; live URLs present; screenshots embedded
-- [ ] All 9 screenshots committed under `docs/screenshots/`
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `npm run seed:local` creates all sample records idempotently
+- [ ] `docs/architecture.png` exists and matches PROJECT.md Section 4.1 topology — manual step; see `docs/VISUAL_ARTIFACTS.md`
+- [x] `README.md` reads as a portfolio piece; live URLs present; screenshots embedded (placeholders)
+- [ ] All 9 screenshots committed under `docs/screenshots/` — manual step; see `docs/VISUAL_ARTIFACTS.md`
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useNotificationApi } from '../../hooks/useNotificationApi';
+import { ErrorState } from '../../components/ui/ErrorState';
 import type { Notification } from '@qulene/api-types';
 
 function formatRelativeTime(iso: string): string {
@@ -38,6 +39,7 @@ export default function NotificationsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [marking, setMarking] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const load = useCallback(
     async (cursor?: string, refresh = false) => {
@@ -53,7 +55,7 @@ export default function NotificationsScreen() {
         }
         setNextCursor(result.nextCursor);
       } catch {
-        // leave existing items visible on error
+        setFetchError('Failed to load notifications');
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
@@ -107,7 +109,12 @@ export default function NotificationsScreen() {
     >
       <Text className="text-2xl font-bold text-gray-900 mb-6">Notifications</Text>
 
-      {items.length === 0 ? (
+      {fetchError ? (
+        <ErrorState
+          message={fetchError}
+          onRetry={() => { setFetchError(null); load(); }}
+        />
+      ) : items.length === 0 ? (
         <View className="items-center pt-20">
           <Text className="text-4xl mb-4">🔔</Text>
           <Text className="text-base font-semibold text-gray-800 mb-2">No notifications yet</Text>

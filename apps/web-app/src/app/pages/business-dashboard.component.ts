@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import type { AppointmentStatus } from '@qulene/api-types';
 import { AppointmentService } from '../services/appointment.service';
 import type { AppointmentRequest } from '../services/appointment.service';
+import { ErrorStateComponent } from '../components/error-state.component';
 
 interface StatusStyle {
   label: string;
@@ -12,7 +13,7 @@ interface StatusStyle {
 const STATUS_STYLES: Record<AppointmentStatus, StatusStyle> = {
   PENDING:   { label: 'Pending',   classes: 'bg-yellow-100 text-yellow-800' },
   ACCEPTED:  { label: 'Accepted',  classes: 'bg-green-100 text-green-800' },
-  DECLINED:  { label: 'Declined',  classes: 'bg-gray-100 text-gray-600' },
+  DECLINED:  { label: 'Declined',  classes: 'bg-red-100 text-red-800' },
   CANCELLED: { label: 'Cancelled', classes: 'bg-gray-100 text-gray-600' },
   COMPLETED: { label: 'Completed', classes: 'bg-blue-100 text-blue-800' },
   NO_SHOW:   { label: 'No Show',   classes: 'bg-orange-100 text-orange-800' },
@@ -38,7 +39,7 @@ const FILTER_CHIPS: FilterChip[] = [
 @Component({
   selector: 'app-business-dashboard',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, ErrorStateComponent],
   template: `
     <div class="min-h-screen bg-gray-50">
       <!-- Business top-nav -->
@@ -87,7 +88,9 @@ const FILTER_CHIPS: FilterChip[] = [
           }
         </div>
 
-        @if (loading() && requests().length === 0) {
+        @if (fetchError()) {
+          <app-error-state [message]="fetchError()!" (retry)="retry()" />
+        } @else if (loading() && requests().length === 0) {
           <div class="space-y-3">
             @for (i of skeletonItems; track i) {
               <div class="h-24 animate-pulse rounded-xl bg-gray-200"></div>
@@ -189,6 +192,7 @@ export class BusinessDashboardComponent implements OnInit {
   readonly nextCursor = signal<string | null>(null);
   readonly activeFilter = signal<FilterOption>('ALL');
   readonly actionInProgress = signal<Set<string>>(new Set());
+  readonly fetchError = signal<string | null>(null);
 
   readonly filterChips = FILTER_CHIPS;
   readonly skeletonItems = [1, 2, 3];
@@ -261,8 +265,14 @@ export class BusinessDashboardComponent implements OnInit {
     return iso.replace('T', ' ').slice(0, 16);
   }
 
+  retry(): void {
+    this.fetchError.set(null);
+    this.loadRequests(true);
+  }
+
   private loadRequests(reset: boolean): void {
     this.loading.set(true);
+    if (reset) this.fetchError.set(null);
     const filter = this.activeFilter();
     const status = filter === 'ALL' ? undefined : filter;
     const cursor = reset ? undefined : (this.nextCursor() ?? undefined);
@@ -278,6 +288,7 @@ export class BusinessDashboardComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
+        this.fetchError.set('Failed to load appointment requests');
         this.loading.set(false);
       },
     });

@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useApi, ApiError } from '../../hooks/useApi';
+import { ErrorState } from '../../components/ui/ErrorState';
 import type { AppointmentRequest, AppointmentStatus } from '@qulene/api-types';
 
 const STATUS_STYLES: Record<AppointmentStatus, { bg: string; text: string; label: string }> = {
@@ -61,6 +62,7 @@ export default function AppointmentsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const load = useCallback(async (cursor?: string, replace = false) => {
     const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
@@ -71,9 +73,7 @@ export default function AppointmentsScreen() {
       setItems((prev) => (replace ? data : [...prev, ...data]));
       setNextCursor(nc);
     } catch (err) {
-      if (err instanceof ApiError) {
-        Alert.alert('Error', err.message);
-      }
+      setFetchError(err instanceof ApiError ? err.message : 'Something went wrong');
     }
   }, [requestWithCursor]);
 
@@ -96,6 +96,12 @@ export default function AppointmentsScreen() {
     await load(nextCursor, false);
     setIsLoadingMore(false);
   }, [nextCursor, isLoadingMore, load]);
+
+  const handleRetry = useCallback(() => {
+    setFetchError(null);
+    setIsLoading(true);
+    load(undefined, true).finally(() => setIsLoading(false));
+  }, [load]);
 
   const handleCancel = useCallback((item: AppointmentRequest) => {
     Alert.alert(
@@ -148,7 +154,9 @@ export default function AppointmentsScreen() {
       <View className="px-4 pt-12 pb-10">
         <Text className="text-2xl font-bold text-gray-900 mb-6">My Appointments</Text>
 
-        {items.length === 0 ? (
+        {fetchError ? (
+          <ErrorState message={fetchError} onRetry={handleRetry} />
+        ) : items.length === 0 ? (
           <View className="flex-1 items-center pt-16">
             <Text className="text-4xl mb-4">📅</Text>
             <Text className="text-lg font-semibold text-gray-900 mb-2">No appointments yet</Text>

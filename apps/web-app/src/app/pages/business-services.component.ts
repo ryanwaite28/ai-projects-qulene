@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ServiceManagementService } from '../services/service-management.service';
 import type { Service } from '../services/service-management.service';
+import { ErrorStateComponent } from '../components/error-state.component';
 
 const TOKEN_KEY = 'qulene_access_token';
 
@@ -21,7 +22,7 @@ function decodeUserId(): string | null {
 @Component({
   selector: 'app-business-services',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, RouterLinkActive],
+  imports: [ReactiveFormsModule, RouterLink, RouterLinkActive, ErrorStateComponent],
   template: `
     <div class="min-h-screen bg-gray-50">
       <!-- Business top-nav -->
@@ -54,7 +55,9 @@ function decodeUserId(): string | null {
           </button>
         </div>
 
-        @if (loading() && services().length === 0) {
+        @if (fetchError()) {
+          <app-error-state [message]="fetchError()!" (retry)="retry()" />
+        } @else if (loading() && services().length === 0) {
           <div class="space-y-3">
             @for (i of skeletonItems; track i) {
               <div class="h-28 animate-pulse rounded-xl bg-gray-200"></div>
@@ -255,6 +258,7 @@ export class BusinessServicesComponent implements OnInit {
   readonly modalError = signal<string | null>(null);
   readonly confirmDeleteId = signal<string | null>(null);
   readonly actionInProgress = signal<Set<string>>(new Set());
+  readonly fetchError = signal<string | null>(null);
 
   readonly skeletonItems = [1, 2, 3];
 
@@ -267,15 +271,28 @@ export class BusinessServicesComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.loadServices();
+  }
+
+  retry(): void {
+    this.fetchError.set(null);
+    this.loadServices();
+  }
+
+  private loadServices(): void {
     const userId = decodeUserId();
     if (!userId) return;
     this.loading.set(true);
+    this.fetchError.set(null);
     this.svcService.listMyServices(userId).subscribe({
       next: (res) => {
         this.services.set(res.data);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.fetchError.set('Failed to load services');
+        this.loading.set(false);
+      },
     });
   }
 

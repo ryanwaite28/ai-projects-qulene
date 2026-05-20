@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { WaitlistService } from '../services/waitlist.service';
 import { ServiceManagementService } from '../services/service-management.service';
+import { ErrorStateComponent } from '../components/error-state.component';
 import type { WaitlistEntry } from '../services/waitlist.service';
 import type { Service } from '../services/service-management.service';
 
@@ -21,7 +22,7 @@ function decodeUserId(): string | null {
 @Component({
   selector: 'app-business-waitlist',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, ErrorStateComponent],
   template: `
     <div class="min-h-screen bg-gray-50">
       <!-- Business top-nav -->
@@ -45,7 +46,9 @@ function decodeUserId(): string | null {
       <div class="mx-auto max-w-3xl px-4 py-10">
         <h1 class="mb-6 text-3xl font-bold text-gray-900">Waitlist</h1>
 
-        @if (loadingServices()) {
+        @if (fetchError()) {
+          <app-error-state [message]="fetchError()!" (retry)="retry()" />
+        } @else if (loadingServices()) {
           <div class="h-10 animate-pulse rounded-lg bg-gray-200"></div>
         } @else if (myServices().length === 0) {
           <p class="py-16 text-center text-gray-500">
@@ -114,19 +117,33 @@ export class BusinessWaitlistComponent implements OnInit {
   readonly entryCount = signal(0);
   readonly loadingServices = signal(false);
   readonly loadingEntries = signal(false);
+  readonly fetchError = signal<string | null>(null);
 
   readonly skeletonItems = [1, 2, 3];
 
   ngOnInit(): void {
+    this.loadServices();
+  }
+
+  retry(): void {
+    this.fetchError.set(null);
+    this.loadServices();
+  }
+
+  private loadServices(): void {
     const userId = decodeUserId();
     if (!userId) return;
     this.loadingServices.set(true);
+    this.fetchError.set(null);
     this.svcService.listMyServices(userId).subscribe({
       next: (res) => {
         this.myServices.set(res.data.filter((s) => s.status !== 'DELETED'));
         this.loadingServices.set(false);
       },
-      error: () => this.loadingServices.set(false),
+      error: () => {
+        this.fetchError.set('Failed to load services');
+        this.loadingServices.set(false);
+      },
     });
   }
 

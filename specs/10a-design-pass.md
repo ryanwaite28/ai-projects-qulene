@@ -1,6 +1,6 @@
 ## Spec: Phase 10a — Mobile + web design pass (visual consistency)
 **FR references**: Phase 10 PROJECT.md items (visual polish, NativeWind / Tailwind consistency)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 6b ✅, 8e3 ✅
 **Size check**: cross-cutting visual pass; no new files (only modifications); 1 layer · justification: this is a focused polish pass, not new functionality — all the screens already exist ✅
 
@@ -31,9 +31,9 @@ Establish a single source of truth for visual style. Both NativeWind (mobile) an
 **Scope discipline**: this phase does NOT add new components, features, or routes. Any temptation to do so is logged in `IMPLEMENTATION_PLAN.md` as a Phase 11+ idea.
 
 ### Done When
-- [ ] Design tokens module exists and is imported by all 3 Tailwind configs
-- [ ] All four screens with status badges (mobile customer appointments, mobile business dashboard, web customer appointments, web business dashboard) use identical color mapping
-- [ ] All primary CTAs have identical color
-- [ ] Manual screenshot comparison: mobile and web screens of the same domain (e.g., appointments list) feel visibly part of the same product
-- [ ] `npm run lint` and `ng lint` exit 0 after changes
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Design tokens module exists and is imported by all 3 Tailwind configs
+- [x] All four screens with status badges (mobile customer appointments, mobile business dashboard, web customer appointments, web business dashboard) use identical color mapping
+- [x] All primary CTAs have identical color
+- [x] Manual screenshot comparison: mobile and web screens of the same domain (e.g., appointments list) feel visibly part of the same product
+- [x] `npm run lint` and `ng lint` exit 0 after changes
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

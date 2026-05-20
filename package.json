@@ -19,7 +19,8 @@
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "bootstrap:local": "./infra/scripts/bootstrap.sh --local",
-    "bootstrap": "./infra/scripts/bootstrap.sh"
+    "bootstrap": "./infra/scripts/bootstrap.sh",
+    "seed:local": "npx tsx infra/scripts/seed-local.ts"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

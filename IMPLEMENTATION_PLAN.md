@@ -615,7 +615,10 @@ The notification Lambda:
 #### 10b — Error handling + empty states + skeletons
 
 - **Spec**: `specs/10b-error-handling.md`
-- **Prerequisites**: 6b ✅, 8e3 ✅
+- **Prerequisites**: 6b ✅, 8e3 ✅, 10a ✅
+- **Sub-specs**:
+  - 10b-a Infrastructure (ErrorState components, Toast system, error interceptor, useApi network guard) ✅ Complete 2026-05-19
+  - 10b-b Screen touch-ups (apply ErrorState to 6 mobile + 6 web list screens) ⬜ Not Started — depends on 10b-a ✅
 
 #### 10c — Seed script + demo data + screenshots + architecture diagram
 
@@ -694,8 +697,9 @@ and reported your findings.
 | 8e3 | Web business waitlist + notifications | `specs/08e3-webapp-business-waitlist-notifications.md` | ✅ Complete | 2026-05-19 |
 | 8f | Web-app Terraform deploy | `specs/08f-webapp-deploy.md` | ✅ Complete | 2026-05-19 |
 | 9a | CI/CD workflows | `specs/09a-ci-cd.md` | ✅ Complete | 2026-05-19 |
-| 9b | Observability (logs + alarms) | `specs/09b-observability.md` | ⬜ Not Started | — |
-| 9c | Secrets + IAM least-privilege | `specs/09c-secrets-iam.md` | ⬜ Not Started | — |
-| 10a | Design pass | `specs/10a-design-pass.md` | ⬜ Not Started | — |
-| 10b | Error handling + empty states | `specs/10b-error-handling.md` | ⬜ Not Started | — |
-| 10c | Portfolio prep (seed + docs) | `specs/10c-portfolio-prep.md` | ⬜ Not Started | — |
+| 9b | Observability (logs + alarms) | `specs/09b-observability.md` | ✅ Complete | 2026-05-19 |
+| 9c | Secrets + IAM least-privilege | `specs/09c-secrets-iam.md` | ✅ Complete | 2026-05-19 |
+| 10a | Design pass | `specs/10a-design-pass.md` | ✅ Complete | 2026-05-19 |
+| 10b-a | Error handling infrastructure | `specs/10b-error-handling.md` | ✅ Complete | 2026-05-19 |
+| 10b-b | Screen error state touch-ups | `specs/10b-error-handling.md` | ✅ Complete | 2026-05-19 |
+| 10c | Portfolio prep (seed + docs) | `specs/10c-portfolio-prep.md` | ✅ Complete | 2026-05-19 |

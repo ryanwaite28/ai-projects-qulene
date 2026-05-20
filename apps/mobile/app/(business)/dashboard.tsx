@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useApi, ApiError } from '../../hooks/useApi';
+import { ErrorState } from '../../components/ui/ErrorState';
 import { AppointmentCard } from '../../components/ui/AppointmentCard';
 import type { AppointmentRequest, AppointmentStatus } from '@qulene/api-types';
 
@@ -54,6 +55,8 @@ export default function DashboardScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
 
   const applyFilter = useCallback(
     (filter: FilterChip, data: AppointmentRequest[]) =>
@@ -75,14 +78,14 @@ export default function DashboardScreen() {
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err instanceof ApiError) Alert.alert('Error', err.message);
+        setFetchError(err instanceof ApiError ? err.message : 'Something went wrong');
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
 
     return () => { cancelled = true; };
-  }, [activeFilter, requestWithCursor, applyFilter]);
+  }, [activeFilter, requestWithCursor, applyFilter, retryTick]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -196,6 +199,11 @@ export default function DashboardScreen() {
             <SkeletonRow />
             <SkeletonRow />
           </>
+        ) : fetchError ? (
+          <ErrorState
+            message={fetchError}
+            onRetry={() => { setFetchError(null); setRetryTick((t) => t + 1); }}
+          />
         ) : items.length === 0 ? (
           <View className="items-center pt-16">
             <Text className="text-4xl mb-4">📋</Text>

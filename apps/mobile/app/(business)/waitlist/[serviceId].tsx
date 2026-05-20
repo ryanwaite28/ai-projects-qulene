@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useApi } from '../../../hooks/useApi';
+import { ErrorState } from '../../../components/ui/ErrorState';
 import type { WaitlistEntry } from '@qulene/api-types';
 
 function SkeletonRow() {
@@ -34,6 +35,7 @@ export default function BusinessWaitlistScreen() {
 
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!serviceId) return;
@@ -42,7 +44,7 @@ export default function BusinessWaitlistScreen() {
       const data = await request<WaitlistEntry[]>(`/businesses/me/waitlist/${serviceId}`);
       setEntries(data);
     } catch {
-      // silent — empty state covers this
+      setFetchError('Failed to load waitlist');
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +81,12 @@ export default function BusinessWaitlistScreen() {
         {entries.length} {entries.length === 1 ? 'customer' : 'customers'} waiting
       </Text>
 
-      {entries.length === 0 ? (
+      {fetchError ? (
+        <ErrorState
+          message={fetchError}
+          onRetry={() => { setFetchError(null); load(); }}
+        />
+      ) : entries.length === 0 ? (
         <View className="items-center pt-20">
           <Text className="text-4xl mb-4">⏳</Text>
           <Text className="text-base font-semibold text-gray-800 mb-2">No customers on the waitlist</Text>
