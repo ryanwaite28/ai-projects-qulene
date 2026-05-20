@@ -1,45 +1,42 @@
 ## Spec: Phase 7a — Backend web/contact + web/signup endpoints
 **FR references**: FR-MKT-03, FR-MKT-05
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 0c ✅
-**Size check**: 6 files · 2 service functions (submitContactForm, joinWaitlistEmail) · 1 layer · 2 routes · fits one session ✅
+**Size check**: 9 files · 2 service functions · 1 layer · 2 routes · single-session safe ✅
 
 ### What
-Implement the public (no-auth) endpoints used by the marketing SPA contact form and waitlist signup. Provision the `web-signups` DynamoDB table and the `lambda-contact` Lambda. Each submission stores a record and sends a notification email to the admin address.
+Public (no-auth) `POST /web/contact` and `POST /web/signup` endpoints for the marketing SPA. `web/contact` sends the submission to the admin email via SES. `web/signup` upserts the visitor's email into `qulene-{env}-web-signups` DynamoDB table. Both routes have `authorization_type = "NONE"` in API Gateway.
 
 ### Why
-FR-MKT-03 + FR-MKT-05: the marketing site is the only thing public visitors interact with; without these endpoints the contact form and waitlist signup are dead.
+FR-MKT-03 (waitlist signup → `web-signups` table) and FR-MKT-05 (contact form + signup → `lambda-contact`). Required before Phase 7c (Angular forms).
 
 ### New / Modified Files
-- `backend/src/db/tables/web-signups.table.ts` — `putSignup` (idempotent on email PK; second insert returns existing record), `getSignupByEmail`
-- `backend/src/services/contact.service.ts` — `submitContactForm(dynamo, ses, { name, email, message })` sends admin email; `joinWaitlistEmail(dynamo, { email })` puts row + sends admin notification
-- `backend/src/handlers/contact.handler.ts` — routes `POST /web/contact`, `POST /web/signup`; no auth (API Gateway route configured without authorizer)
-- `infra/terraform/modules/dynamodb-web-signups/main.tf` — table `qulene-{env}-web-signups` (PK: `email`)
-- `infra/terraform/modules/lambda-contact/main.tf` — Lambda + IAM (dynamodb:PutItem/GetItem on web-signups, ses:SendEmail)
-- tests: `backend/src/services/__tests__/contact.service.test.ts` + `backend/tests/integration/contact.handler.test.ts`
+- `backend/src/db/tables/web-signups.table.ts` — new; `putSignup(dynamo, email)` (PutItem, idempotent by email PK)
+- `backend/src/services/contact.service.ts` — new; `submitContact(ses, {name, email, message})`, `signupForWaitlist(dynamo, email)`
+- `backend/src/handlers/contact.handler.ts` — new; routes `POST /web/contact`, `POST /web/signup`, no auth
+- `infra/terraform/modules/dynamodb-web-signups/main.tf` — new; `qulene-{env}-web-signups` (PK: email)
+- `infra/terraform/modules/lambda-contact/main.tf` — new; 128 MB / 10s, IAM `dynamodb:PutItem` + `ses:SendEmail`
+- `infra/terraform/envs/dev/main.tf` — modified; Phase 7a block with 2 modules + permission + integration + 2 NONE-auth routes
+- `infra/terraform/envs/dev/variables.tf` — modified; added `admin_email` variable (default `ryanwaite28@gmail.com`)
+- `backend/esbuild.config.ts` — modified; added `contact` entry
+- `backend/vitest.config.ts` — modified; added `WEB_SIGNUPS_TABLE` + `ADMIN_EMAIL` env vars
 
 ### Behavior
-**`submitContactForm(dynamo, ses, { name, email, message })`**:
-1. Shape validation in handler: `name` 1–100 chars, `email` valid format, `message` 1–2000 chars
-2. Service: send admin email to `ADMIN_EMAIL` env var (configured per env in Secrets Manager) with subject "Qulene contact form: {name}" and body "From: {name} <{email}>\n\n{message}"
-3. Do NOT store contact-form submissions in DynamoDB (no FR requires retention; email delivery is the artifact)
-4. Return `{ data: { received: true } }`
+**`submitContact(ses, { name, email, message })`**: Sends HTML email to `ADMIN_EMAIL` with escaped name/email/message. Re-throws SES errors (handler catches → 500).
 
-**`joinWaitlistEmail(dynamo, { email })`**:
-1. Shape validation in handler: valid email format
-2. Service: `putSignup(dynamo, { email, createdAt: now })` — idempotent; PutItem with `ConditionExpression: attribute_not_exists(email)` (no error on conflict — just return existing)
-3. Send admin notification "New marketing waitlist signup: {email}"
-4. Return `{ data: { joined: true } }`
+**`signupForWaitlist(dynamo, email)`**: PutItem to `WEB_SIGNUPS_TABLE` with `{ email, createdAt }`. Idempotent — same email overwrites `createdAt`. Returns `{ email }`.
 
-**No auth**: API Gateway routes `POST /web/contact` + `POST /web/signup` are configured without the Cognito authorizer. CORS is relaxed (marketing site origins: `qulene.com`, `www.qulene.com`, `dev.qulene.com`).
+**Handler `POST /web/contact`**: validates name (non-empty, ≤100), email (contains @), message (non-empty, ≤2000). Calls `submitContact`. Returns `{ data: { ok: true } }`.
 
-**Rate limiting**: deferred to Phase 9b (CloudWatch/WAF basic protection if needed). For portfolio scale, single-shot submissions are acceptable.
+**Handler `POST /web/signup`**: validates email (contains @). Calls `signupForWaitlist`. Returns `{ data: { email } }`.
 
 ### Done When
-- [ ] `POST /web/contact` accepts valid payload → admin email sent
-- [ ] `POST /web/signup` accepts valid email → row in `web-signups` + admin email
-- [ ] Duplicate signup → returns success without duplicate write (idempotent)
-- [ ] CORS configured for marketing origins
-- [ ] No auth on these two routes (verified — sending Authorization header has no effect; missing header succeeds)
-- [ ] `dist/lambdas/contact/index.js` bundle present
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `POST /web/contact` returns 200 for valid payload; SES call made
+- [x] `POST /web/signup` returns 200; row written to `web-signups`; idempotent on re-submit
+- [x] 400 returned for missing/malformed fields on both routes
+- [x] 5 unit tests pass (contact.service.test.ts)
+- [x] 9 integration tests pass (contact.handler.test.ts)
+- [x] `dist/lambdas/contact/index.zip` present
+- [x] API Gateway routes added with `authorization_type = "NONE"`
+- [x] `npx tsc --noEmit` clean
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

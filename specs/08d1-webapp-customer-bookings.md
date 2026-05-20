@@ -1,6 +1,6 @@
 ## Spec: Phase 8d1 — Web customer appointments + waitlist pages
 **FR references**: FR-WEBAPP-13 (`/customer/appointments`, `/customer/waitlist`), FR-APT-01, FR-APT-09, FR-APT-11, FR-WAIT-01, FR-WAIT-02, FR-WAIT-03
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 3b ✅, 4a ✅, 8a ✅
 **Size check**: 4 files · 2 services · 1 layer · 2 pages · fits one session ✅
 
@@ -28,11 +28,11 @@ FR-WEBAPP-13 customer route group: parity with mobile customer booking flows.
 **Standards**: signals for all state; Reactive Forms for the modal; standalone; service layer HTTP only.
 
 ### Done When
-- [ ] Appointments page renders + paginates; Cancel works with confirmation
-- [ ] New-request modal validates + submits with idempotencyKey; replay creates no duplicate
-- [ ] Waitlist page renders + Leave works
-- [ ] PROMOTED row's Book Now opens pre-filled modal
-- [ ] Empty + loading states present
-- [ ] Reactive Forms only; signals only; no HTTP in components
-- [ ] Navigation entry points: customer sidebar links to both
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Appointments page renders + paginates; Cancel works with confirmation
+- [x] New-request modal validates + submits with idempotencyKey; replay creates no duplicate
+- [x] Waitlist page renders + Leave works
+- [x] PROMOTED row's Book Now opens pre-filled modal
+- [x] Empty + loading states present
+- [x] Reactive Forms only; signals only; no HTTP in components
+- [x] Navigation entry points: customer sidebar links to both
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

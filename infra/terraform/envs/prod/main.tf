@@ -44,6 +44,18 @@ data "aws_ssm_parameter" "acm_certificate_arn" {
   name = "/qulene/${var.environment}/acm_certificate_arn"
 }
 
+###############################################################################
+# Phase 8f — Web app SPA hosting (S3 + CloudFront + Route 53)
+###############################################################################
+
+module "webapp" {
+  source = "../../modules/webapp"
+
+  environment         = var.environment
+  hosted_zone_id      = data.aws_ssm_parameter.hosted_zone_id.value
+  acm_certificate_arn = data.aws_ssm_parameter.acm_certificate_arn.value
+}
+
 output "environment" {
   value = var.environment
 }

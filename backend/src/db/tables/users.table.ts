@@ -56,6 +56,20 @@ export async function incrementUnreadCount(
   );
 }
 
+export async function decrementUnreadCount(
+  dynamo: DynamoDBDocumentClient,
+  userId: string,
+): Promise<void> {
+  await dynamo.send(
+    new UpdateCommand({
+      TableName: TABLE(),
+      Key: { userId },
+      UpdateExpression: 'ADD unreadNotificationCount :neg_one',
+      ExpressionAttributeValues: { ':neg_one': -1 },
+    }),
+  );
+}
+
 export async function updateUserName(
   dynamo: DynamoDBDocumentClient,
   userId: string,

@@ -1,6 +1,6 @@
 ## Spec: Phase 8a — Web-app scaffold + auth.service + interceptors + guards + routing
 **FR references**: FR-WEBAPP-02, FR-WEBAPP-04, FR-WEBAPP-05, FR-WEBAPP-06, FR-WEBAPP-07, FR-WEBAPP-08, FR-WEBAPP-09, FR-WEBAPP-10, FR-WEBAPP-11, FR-WEBAPP-12
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 1b ✅
 **Size check**: 8 files · 1 service (AuthService) · 1 layer (frontend) · 0 pages (scaffold only) · fits one session ✅
 
@@ -30,11 +30,11 @@ FR-WEBAPP-02/04–12: the web-app is auth-protected and uses Cognito; the scaffo
 **Standards (FR-WEBAPP-09/10/11/12)**: all components standalone; signals for state; Reactive Forms for forms (only AuthService here so no form yet); all HTTP in services/ (no HttpClient in components).
 
 ### Done When
-- [ ] `ng build` exits 0; `ng lint` exits 0
-- [ ] All 15 routes resolve via `loadComponent` to placeholder components
-- [ ] AuthGuard redirects unauthenticated user from `/customer/**` to `/login`
-- [ ] RoleGuard redirects CUSTOMER attempting `/business/**` to `/login`
-- [ ] AuthInterceptor injects Bearer on protected requests; skips on public
-- [ ] 401/403 from API clears token + redirects to `/login` (verified via mock HttpClient)
-- [ ] Amplify Auth configured from `environment.ts`
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `ng build` exits 0; `ng lint` exits 0
+- [x] All 15 routes resolve via `loadComponent` to placeholder components
+- [x] AuthGuard redirects unauthenticated user from `/customer/**` to `/login`
+- [x] RoleGuard redirects CUSTOMER attempting `/business/**` to `/login`
+- [x] AuthInterceptor injects Bearer on protected requests; skips on public
+- [x] 401/403 from API clears token + redirects to `/login` (verified via mock HttpClient)
+- [x] Amplify Auth configured from `environment.ts`
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

@@ -1,0 +1,83 @@
+###############################################################################
+# Qulene — Deploy to dev
+#
+# Triggers automatically on every push to main.
+# Runs a self-contained build → terraform apply (dev) → SPA deploys → smoke tests.
+#
+# AWS auth: OIDC via GitHubActionsDevOpsDeployRole (never hardcoded).
+# Terraform profile: TF_VAR_aws_profile="" overrides the rmw-llc local default
+# so OIDC environment credentials are used in CI.
+# Deploy scripts: AWS_PROFILE="" passed via env so the ${PROFILE:+--profile ...}
+# expansion produces no --profile flag and OIDC credentials are used.
+###############################################################################
+
+name: Deploy — dev
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Build + Terraform apply + Deploy SPAs (dev)
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Build Lambda bundles (esbuild)
+        run: cd backend && npm run build
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init (dev)
+        run: terraform -chdir=infra/terraform/envs/dev init
+        env:
+          TF_VAR_aws_profile: ""
+
+      - name: Terraform apply (dev)
+        run: terraform -chdir=infra/terraform/envs/dev apply -auto-approve
+        env:
+          TF_VAR_aws_profile: ""
+
+      - name: Deploy web app (dev)
+        run: bash infra/scripts/deploy-web-app.sh dev
+        env:
+          AWS_PROFILE: ""
+
+      - name: Deploy marketing (dev)
+        run: bash infra/scripts/deploy-marketing.sh dev
+        env:
+          AWS_PROFILE: ""
+
+      - name: Smoke tests
+        run: |
+          echo "Probing https://app.dev.qulene.com ..."
+          curl -sf --max-time 15 https://app.dev.qulene.com -o /dev/null
+          echo "  ✓ web app reachable"
+
+          echo "Probing https://dev.qulene.com ..."
+          curl -sf --max-time 15 https://dev.qulene.com -o /dev/null
+          echo "  ✓ marketing site reachable"

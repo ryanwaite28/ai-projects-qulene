@@ -46,7 +46,7 @@ jobs:
         run: npm run typecheck
 
   ng-lint-web-app:
-    name: ng lint (apps/web-app — placeholder until 8a)
+    name: ng lint (apps/web-app)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -56,14 +56,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: ng lint (skipped — workspace not scaffolded yet)
-        run: |
-          if [ -f apps/web-app/angular.json ]; then
-            cd apps/web-app && npx --yes @angular/cli@17 lint
-          else
-            echo "apps/web-app not yet scaffolded; skipping ng lint (Phase 8a will activate this)."
-          fi
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: ng lint
+        run: cd apps/web-app && npx ng lint
 
   security:
     name: Security & Quality Scanning
@@ -80,7 +79,7 @@ jobs:
       pull-requests:   write   # required for dependency-review PR comment
 
   ng-lint-marketing:
-    name: ng lint (apps/marketing — placeholder until 7b)
+    name: ng lint (apps/marketing)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -90,11 +89,71 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: ng lint (skipped — workspace not scaffolded yet)
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: ng lint
+        run: cd apps/marketing && npx ng lint
+
+  backend-test:
+    name: Backend unit tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run tests
+        run: cd backend && npm test
+
+  build:
+    name: Build (esbuild + ng build) + Bundle audit
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck, ng-lint-web-app, ng-lint-marketing, backend-test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build Lambda bundles (esbuild)
+        run: cd backend && npm run build
+
+      - name: Bundle audit — verify all Lambda entry points have a .zip
         run: |
-          if [ -f apps/marketing/angular.json ]; then
-            cd apps/marketing && npx --yes @angular/cli@17 lint
-          else
-            echo "apps/marketing not yet scaffolded; skipping ng lint (Phase 7b will activate this)."
+          NAMES=$(grep -E "^\s+\w+: 'src/handlers/" backend/esbuild.config.ts \
+            | awk -F: '{print $1}' | tr -d ' ')
+          MISSING=()
+          for NAME in $NAMES; do
+            if [ ! -f "backend/dist/lambdas/${NAME}/index.zip" ]; then
+              MISSING+=("${NAME}")
+            fi
+          done
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing Lambda bundles: ${MISSING[*]}"
+            exit 1
           fi
+          echo "Bundle audit passed — all Lambda bundles present."
+
+      - name: Build web app (ng build)
+        run: cd apps/web-app && npx ng build --configuration production
+
+      - name: Build marketing (ng build)
+        run: cd apps/marketing && npx ng build --configuration production

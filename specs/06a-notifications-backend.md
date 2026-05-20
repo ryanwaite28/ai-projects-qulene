@@ -1,6 +1,6 @@
 ## Spec: Phase 6a — Backend notifications endpoints (list + mark read + unreadCount + TF)
 **FR references**: FR-NOTIF-03, FR-NOTIF-04, FR-NOTIF-05
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 5c ✅ (notifications table populated; this phase adds read endpoints)
 **Size check**: 6 files · 4 service functions (listNotifications, markRead, getMyProfile, updateMyProfile) · 1 layer · 4 routes · fits one session ✅
 
@@ -34,10 +34,10 @@ FR-NOTIF-03/04/05 + the basic profile management that completes the user surface
 **`updateMyName(dynamo, { userId, firstName, lastName })`**: validates non-empty + ≤ 50 chars; UpdateItem; returns updated record. Note: email + role are NOT updatable (Cognito controls email; role is immutable per FR-AUTH per CLAUDE.md Cognito Integration Rules).
 
 ### Done When
-- [ ] `GET /notifications` paginated by `userId-createdAt-index`
-- [ ] `PATCH /notifications/:id/read` decrements unread count atomically (not twice on parallel calls; verified in test)
-- [ ] `GET /users/me` returns full profile including `unreadNotificationCount`
-- [ ] `PATCH /users/me` updates name only; email/role rejected with 422
-- [ ] CUSTOMER and BUSINESS both can call all 4 routes (no role discrimination here)
-- [ ] `dist/lambdas/users/index.js` bundle present; API GW integration blocks for 4 routes
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `GET /notifications` paginated by `userId-createdAt-index`
+- [x] `PATCH /notifications/:id/read` decrements unread count atomically (not twice on parallel calls; verified in test)
+- [x] `GET /users/me` returns full profile including `unreadNotificationCount`
+- [x] `PATCH /users/me` updates name only; email/role rejected with 422
+- [x] CUSTOMER and BUSINESS both can call all 4 routes (no role discrimination here)
+- [x] `dist/lambdas/users/index.js` bundle present; API GW integration blocks for 4 routes
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

@@ -8,6 +8,8 @@ const entries: Record<string, string> = {
   appointments: 'src/handlers/appointment.handler.ts',
   waitlist: 'src/handlers/waitlist.handler.ts',
   notification: 'src/handlers/notification.handler.ts',
+  users: 'src/handlers/user.handler.ts',
+  contact: 'src/handlers/contact.handler.ts',
 };
 
 await Promise.all(

@@ -1,35 +1,40 @@
-## Spec: Phase 8c — Web public business browsing (list + detail)
-**FR references**: FR-WEBAPP-13 (`/businesses`, `/businesses/:id`), FR-BIZ-03, FR-BIZ-04, FR-SVC-04, FR-AVL-03
-**Status**: ⬜ Not Started
-**Prerequisites**: 2a ✅, 2b ✅, 2c ✅, 8a ✅
-**Size check**: 4 files · 1 service (BusinessService) · 1 layer · 2 pages · fits one session ✅
+## Spec: Phase 8c — Web public business browsing
+**FR references**: FR-BIZ-03, FR-BIZ-04, FR-SVC-04, FR-AVL-03, FR-WEBAPP-13
+**Status**: ✅ Implemented
+**Prerequisites**: 8a-c ✅
+**Size check**: 5 files · 4 service methods (at limit) · 1 layer (Angular source) · 2 screens · fits one session ✅
 
 ### What
-Web mirror of Phase 2e mobile screens: browse businesses (paginated, category-filtered) and business detail (profile + services + availability). Public — no auth required.
+Replace the `/businesses` and `/businesses/:businessId` placeholder routes with real components. Adds `BusinessService` with four public-endpoint methods and a reusable `BusinessCardComponent`. Businesses list has category chip filters + cursor-based "Load more". Business detail loads profile + services + availability in parallel using `forkJoin`.
 
 ### Why
-FR-WEBAPP-13 requires the web app to mirror mobile functionality including the public browse experience.
+FR-BIZ-03/04: business profiles publicly viewable + paginated list filterable by category. FR-SVC-04/AVL-03: services and availability windows publicly readable. FR-WEBAPP-13: `/businesses` and `/businesses/:businessId` must be real pages.
 
 ### New / Modified Files
-- `apps/web-app/src/app/services/business.service.ts` — `listBusinesses({ category?, cursor? })`, `getBusinessById(id)`, `listServicesForBusiness(businessId)`, `listAvailabilityForBusiness(businessId)` — all return `Observable<T>`
-- `apps/web-app/src/app/pages/businesses/businesses.component.ts` — category chip filter; paginated card grid; cursor-based "Load more"; loading skeleton; empty state
-- `apps/web-app/src/app/pages/business-detail/business-detail.component.ts` — header (name, category, address, avatar), services list, weekly availability grid; each service has "Request Appointment" button (linked in 8d1 once that exists) and "Join Waitlist" button (linked in 8d1)
-- `apps/web-app/src/app/components/business-card/business-card.component.ts` — reusable card for list + future related-business widgets
+- `apps/web-app/src/app/services/business.service.ts` *(new)* — `listBusinesses({ category?, cursor? })`, `getBusinessById(id)`, `listServicesForBusiness(businessId)`, `listAvailabilityForBusiness(businessId)`; defines `BusinessProfile`, `Service`, `AvailabilityWindow` response interfaces
+- `apps/web-app/src/app/components/business-card.component.ts` *(new)* — selector `app-business-card`; `@Input() business!: BusinessProfile`; card layout with name, category, address, avatar placeholder; `[routerLink]` to `/businesses/:businessId`
+- `apps/web-app/src/app/pages/businesses.component.ts` *(new)* — category chip filter (predefined list); signal state: `businesses`, `loading`, `cursor`, `activeCategory`; "Load more" appends next page; empty state when list is empty
+- `apps/web-app/src/app/pages/business-detail.component.ts` *(new)* — `@Input() businessId!: string` (via `withComponentInputBinding()`); `forkJoin` of `getBusinessById` + `listServicesForBusiness` + `listAvailabilityForBusiness`; signal state: `profile`, `services`, `windows`, `loading`, `notFound`; service CTAs link to `/customer/appointments` and `/customer/waitlist` (trigger authGuard → login if unauthenticated; real flow wired in 8d1); back link to `/businesses`
+- `apps/web-app/src/app/app.routes.ts` *(modify from 8b)* — swap `PlaceholderComponent` → real components for `/businesses` and `/businesses/:businessId`
 
 ### Behavior
-**Browse page**: signal-based state `businesses = signal<Business[]>([])`, `category = signal<Category|null>(null)`, `cursor = signal<string|null>(null)`. On category change → reset + reload. On Load More → fetch next page.
 
-**Detail page**: route param `:businessId` → parallel `forkJoin` of profile + services + availability; render with skeleton placeholders while loading. Empty state on 404 with back link.
+**`BusinessService`** — all public, no auth header:
+- `listBusinesses` builds `HttpParams` from optional `category` and `cursor`; returns `{ data: BusinessProfile[]; nextCursor: string | null }`
+- `getBusinessById` / `listServicesForBusiness` / `listAvailabilityForBusiness` are simple GET calls
+- `apiUrl` from `environment.apiUrl` only
 
-**Service row CTAs**: until Phases 8d1 are implemented, the "Request Appointment" and "Join Waitlist" buttons surface a toast "Sign in to book"; once 8d1 exists, the buttons navigate to `/customer/appointments/new?serviceId=...` (or open a modal).
+**`BusinessesComponent`**: predefined categories `['All','Salon','Fitness','Tutoring','Repair','Consulting','Photography','Healthcare']`; selecting a chip resets list + fetches; "Load more" appends next page; skeleton (6 gray cards) while first load is in progress.
 
-**Standards**: all signals; new control flow; standalone; service-layer HTTP only.
+**`BusinessDetailComponent`**: `@Input() businessId!: string`; `ngOnInit` fires `forkJoin`; availability rendered as table rows for days that have windows; `addressLine()` method formats address/city/state; `\${{ svc.price }}` used in template (escaped dollar sign in TS backtick literal).
 
 ### Done When
-- [ ] Browse page lists businesses with category filter + cursor pagination
-- [ ] Business detail renders profile + services + availability with skeletons
-- [ ] Public — works without authentication
-- [ ] Empty states on no-businesses and on 404
-- [ ] No HTTP calls in components (all via BusinessService)
-- [ ] At least one navigation entry point (navbar "Browse")
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `ng build` exits 0
+- [x] `ng lint` exits 0
+- [x] `/businesses` lists businesses with category filter and cursor pagination
+- [x] `/businesses/:businessId` renders profile + services + availability with skeletons while loading
+- [x] Both pages work without authentication (public)
+- [x] Empty state on no-results; `notFound` state on detail 404
+- [x] No `HttpClient` calls in components — all through `BusinessService`
+- [x] Home page "Browse Businesses" link provides navigation entry point
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

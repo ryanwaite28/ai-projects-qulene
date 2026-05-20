@@ -1,6 +1,6 @@
 ## Spec: Phase 8e2 — Web business services + availability pages
 **FR references**: FR-WEBAPP-13 (`/business/services`, `/business/availability`), FR-SVC-01, FR-SVC-02, FR-SVC-03, FR-AVL-01, FR-AVL-02, FR-AVL-04
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 2b ✅, 2c ✅, 8a ✅
 **Size check**: 4 files · 2 services · 1 layer · 2 pages · fits one session ✅
 
@@ -24,8 +24,8 @@ FR-WEBAPP-13 business route group: managers need parity to operate from desktop.
 **Standards**: Reactive Forms; signals; standalone; service-layer HTTP only.
 
 ### Done When
-- [ ] Services CRUD operations all work; FR-SVC-02 limit error inline
-- [ ] Availability add/remove works; FR-AVL-02 limits enforced + surfaced inline
-- [ ] Empty + loading states present
-- [ ] Navigation entry points: business sidebar links
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Services CRUD operations all work; FR-SVC-02 limit error inline
+- [x] Availability add/remove works; FR-AVL-02 limits enforced + surfaced inline
+- [x] Empty + loading states present
+- [x] Navigation entry points: business sidebar links
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

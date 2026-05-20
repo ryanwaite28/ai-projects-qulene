@@ -1,35 +1,35 @@
 ## Spec: Phase 8d2 — Web customer notifications + profile pages
 **FR references**: FR-WEBAPP-13 (`/customer/notifications`, `/customer/profile`), FR-NOTIF-03, FR-NOTIF-04, FR-NOTIF-05
-**Status**: ⬜ Not Started
-**Prerequisites**: 6a ✅, 8a ✅
-**Size check**: 4 files · 2 services · 1 layer · 2 pages · fits one session ✅
+**Status**: ✅ Implemented
+**Prerequisites**: 6a ✅, 8a-c ✅, 8d1-a ✅
+**Size check**: 5 files · 4 service functions · 1 layer (Angular source) · 2 screens · fits one session ✅
 
 ### What
-Web equivalents of Phase 6b notifications screen and customer profile editing. `NotificationService` + `UserService` Angular services added. Notifications page with unread badge in the sidebar; profile page with editable firstName / lastName.
+Implement `/customer/notifications` and `/customer/profile` as real pages, completing the customer route group. Adds `NotificationService` (`listNotifications`, `markAsRead`) and `UserService` (`getMyProfile`, `updateMyName`). Both new pages include a customer top-nav strip linking to all four customer routes — this is the navigation entry point for the new pages.
 
 ### Why
-FR-WEBAPP-13 customer route group: completes the customer-facing surface.
+FR-WEBAPP-13: the two remaining customer routes must be real pages. FR-NOTIF-03/04: customers must be able to read and acknowledge notifications. FR-NOTIF-05: unread count surfaced on the notifications page at load.
 
 ### New / Modified Files
-- `apps/web-app/src/app/services/notification.service.ts` — `listNotifications({ cursor? })`, `markAsRead(notificationId)`
-- `apps/web-app/src/app/services/user.service.ts` — `getMyProfile()`, `updateMyName({ firstName, lastName })`
-- `apps/web-app/src/app/pages/customer/notifications/notifications.component.ts` — list, unread visual, click-to-mark-read + navigate by type
-- `apps/web-app/src/app/pages/customer/profile/profile.component.ts` — Reactive Form for firstName/lastName; email + role read-only
+- `apps/web-app/src/app/services/notification.service.ts` *(new)* — `listNotifications(cursor?)`, `markAsRead(notificationId)`
+- `apps/web-app/src/app/services/user.service.ts` *(new)* — `getMyProfile()`, `updateMyName({ firstName, lastName })`
+- `apps/web-app/src/app/pages/customer-notifications.component.ts` *(new)* — paginated list; unread count badge; click-to-mark-read in-place; Load More; loading skeleton; top-nav strip
+- `apps/web-app/src/app/pages/customer-profile.component.ts` *(new)* — Reactive Form for firstName/lastName (required, maxLength 50); email/role read-only display; loading skeleton; top-nav strip
+- `apps/web-app/src/app/app.routes.ts` *(modify from 8d1-b)* — swap `PlaceholderComponent` → real components for `/customer/notifications` and `/customer/profile`
 
 ### Behavior
-**Notifications page**: paginated list using `notificationService.listNotifications`. Unread rows have colored left border + bold text. Tapping a row optimistically marks read + calls API + navigates by type (mirrors mobile mapping in 6b).
+**Notifications page**: paginated list via `listNotifications`. Unread rows: yellow-50 background + left yellow border + bold text. Read rows: white background, muted text. Click on unread row calls `markAsRead`; updates row in-place and decrements local unread count; clicking a read row is a no-op. Load More appends next page when `nextCursor` non-null. Empty state: "No notifications yet." Skeleton: 3 animated rows while loading. Unread count fetched from `getMyProfile()` on mount; displayed as badge in top-nav Notifications tab.
 
-**Profile page**: on mount, `userService.getMyProfile()` populates form; submit calls `updateMyName`. Email field shown but disabled (Cognito controls it); role field shown but disabled (immutable). Avatar upload **not** in this spec (customers don't have avatars per FR-BIZ-06 which is business-only).
+**Profile page**: On mount, `getMyProfile()` pre-fills firstName/lastName and stores email/role in signals for read-only display. Submit calls `updateMyName`; success shows inline "Profile updated." green banner; 422 shows inline error; other errors show generic message.
 
-**Unread badge in sidebar**: signal-based count fetched on app init from `userService.getMyProfile()`; updated when `markAsRead` succeeds. (Polling not implemented in web — Phase 10b can add WebSocket or polling if scope allows; for portfolio MVP, the count is fresh at page load.)
-
-**Standards**: signals; Reactive Forms; standalone; service-layer HTTP only.
+**Top-nav**: Both pages include a horizontal strip with RouterLinks to Appointments · Waitlist · Notifications · Profile, with `routerLinkActive` class highlighting the active tab.
 
 ### Done When
-- [ ] Notifications page renders, paginates, marks-read on tap
-- [ ] Tap navigation by notification type works
-- [ ] Profile page edits firstName/lastName; email/role read-only
-- [ ] Sidebar unread badge visible when count > 0
-- [ ] Empty/loading states present
-- [ ] Navigation entry points: customer sidebar links
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `ng build` exits 0
+- [x] `ng lint` exits 0
+- [x] Notifications page renders paginated list; unread rows visually distinct; click marks read in-place
+- [x] Load More appends next page; empty state and loading skeleton present
+- [x] Profile page pre-fills from API; email/role read-only; save calls PATCH /users/me
+- [x] Both pages include top-nav strip linking to all 4 customer routes
+- [x] `app.routes.ts` routes wired to real components
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

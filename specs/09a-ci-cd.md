@@ -1,6 +1,6 @@
 ## Spec: Phase 9a — GitHub Actions CI/CD workflows
 **FR references**: NFR-05 (env isolation), NFR-07 (no secrets in code)
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 0c ✅ (CI skeleton extended in this phase with deploy steps)
 **Size check**: 3 files · 0 service functions · 1 layer (CI) · fits one session ✅
 
@@ -42,10 +42,10 @@ env:
 **Prod gating**: `deploy-prod.yml` uses `environment: prod-approval` on its main job → GitHub blocks the run until a required reviewer approves through the UI.
 
 ### Done When
-- [ ] Push to main runs `ci.yml` lint+test+build (no deploy yet) and exits 0
-- [ ] Push to main runs `deploy-dev.yml` which applies Terraform + deploys both SPAs and runs smoke tests against dev
-- [ ] Manually triggering `deploy-prod.yml` requires approval before any deploy step
-- [ ] Bundle audit step fails the workflow when an entry is missing
-- [ ] All AWS-touching steps use OIDC + `TF_VAR_aws_profile=""`
-- [ ] `AWS_ROLE_ARN` referenced via `secrets`; never hardcoded
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Push to main runs `ci.yml` lint+test+build (no deploy yet) and exits 0
+- [x] Push to main runs `deploy-dev.yml` which applies Terraform + deploys both SPAs and runs smoke tests against dev
+- [x] Manually triggering `deploy-prod.yml` requires approval before any deploy step
+- [x] Bundle audit step fails the workflow when an entry is missing
+- [x] All AWS-touching steps use OIDC + `TF_VAR_aws_profile=""`
+- [x] `AWS_ROLE_ARN` referenced via `secrets`; never hardcoded
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

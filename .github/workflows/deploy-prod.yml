@@ -1,0 +1,81 @@
+###############################################################################
+# Qulene — Deploy to prod
+#
+# Manually triggered (workflow_dispatch only).
+# The `environment: prod-approval` setting blocks all steps until a required
+# reviewer approves the run in the GitHub UI.
+#
+# AWS auth: OIDC via GitHubActionsDevOpsDeployRole (never hardcoded).
+# Terraform profile: TF_VAR_aws_profile="" overrides the rmw-llc local default.
+# Deploy scripts: AWS_PROFILE="" so OIDC credentials are used automatically.
+###############################################################################
+
+name: Deploy — prod
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Build + Terraform apply + Deploy SPAs (prod)
+    runs-on: ubuntu-latest
+    environment: prod-approval
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Build Lambda bundles (esbuild)
+        run: cd backend && npm run build
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init (prod)
+        run: terraform -chdir=infra/terraform/envs/prod init
+        env:
+          TF_VAR_aws_profile: ""
+
+      - name: Terraform apply (prod)
+        run: terraform -chdir=infra/terraform/envs/prod apply -auto-approve
+        env:
+          TF_VAR_aws_profile: ""
+
+      - name: Deploy web app (prod)
+        run: bash infra/scripts/deploy-web-app.sh prod
+        env:
+          AWS_PROFILE: ""
+
+      - name: Deploy marketing (prod)
+        run: bash infra/scripts/deploy-marketing.sh prod
+        env:
+          AWS_PROFILE: ""
+
+      - name: Smoke tests
+        run: |
+          echo "Probing https://app.qulene.com ..."
+          curl -sf --max-time 15 https://app.qulene.com -o /dev/null
+          echo "  ✓ web app reachable"
+
+          echo "Probing https://qulene.com ..."
+          curl -sf --max-time 15 https://qulene.com -o /dev/null
+          echo "  ✓ marketing site reachable"

@@ -32,6 +32,8 @@ export default defineConfig({
       SES_FROM_EMAIL: 'no-reply@qulene.com',
       SES_ENDPOINT: 'http://localhost:4566',
       SECRETS_NAME: 'qulene-local-secrets',
+      WEB_SIGNUPS_TABLE: 'qulene-local-web-signups',
+      ADMIN_EMAIL: 'admin@test.com',
     },
   },
 });

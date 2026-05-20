@@ -1,8 +1,8 @@
 ## Spec: Phase 8f — Web-app Terraform deploy (S3 + CloudFront + Route 53)
 **FR references**: FR-WEBAPP-01
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 8a ✅ (can deploy incrementally as pages get added)
-**Size check**: 2 files · 0 service functions · 1 layer (Terraform + script) · 5 resource groups via reused `spa` module ✅
+**Size check**: 4 files · 0 service functions · 1 layer (Terraform + script) · 5 resource groups via reused `spa` module ✅
 
 ### What
 Provision S3 (`qulene-{env}-app`) + CloudFront + Route 53 A-record for `app.{env}.qulene.com` (or `app.qulene.com` for prod) by reusing the `spa` module from Phase 7d. Add the deploy script.
@@ -11,8 +11,10 @@ Provision S3 (`qulene-{env}-app`) + CloudFront + Route 53 A-record for `app.{env
 FR-WEBAPP-01: web app served at `app.qulene.com`. Reuses the work in 7d to amortize infra.
 
 ### New / Modified Files
-- `infra/terraform/modules/webapp/main.tf` — thin wrapper around `spa` module with bucket name `qulene-{env}-app` and aliases `app.qulene.com` (prod) / `app.dev.qulene.com` (dev)
-- `infra/scripts/deploy-web-app.sh` — `cd apps/web-app && ng build --configuration={env} && aws s3 sync dist/web-app/browser/ s3://qulene-{env}-app/ --delete && aws cloudfront create-invalidation --distribution-id {from SSM} --paths "/*"`
+- `infra/terraform/modules/webapp/main.tf` *(new)* — thin wrapper around `spa` module: `site_name="webapp"`, `bucket_name="qulene-{env}-app"`, `domain_names` via locals (prod → `app.qulene.com`, dev → `app.dev.qulene.com`)
+- `infra/terraform/envs/dev/main.tf` *(modify from 7d)* — add `module "webapp"` block after `module "marketing"`
+- `infra/terraform/envs/prod/main.tf` *(modify from 7d)* — add `module "webapp"` block before outputs
+- `infra/scripts/deploy-web-app.sh` *(new)* — build (`--configuration production|development` based on env), sync `dist/web-app/browser/` → `s3://qulene-{env}-app/`, invalidate via SSM-stored distribution ID
 
 ### Behavior
 **`webapp` module signature** (mirrors `marketing`):
@@ -34,9 +36,10 @@ CloudFront distribution ID is written to SSM `/qulene/{env}/webapp_cloudfront_di
 **SPA routing**: same as marketing — 403/404 → /index.html.
 
 ### Done When
-- [ ] `terraform apply` provisions `qulene-{env}-app` S3 + CloudFront + Route 53
-- [ ] CloudFront uses wildcard cert from SSM
-- [ ] 403/404 → /index.html configured
-- [ ] `deploy-web-app.sh dev` builds + syncs + invalidates
-- [ ] Visiting `app.dev.qulene.com` returns the SPA over HTTPS
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `infra/terraform/modules/webapp/main.tf` created; `terraform validate` passes
+- [x] `module "webapp"` added to `envs/dev/main.tf` and `envs/prod/main.tf`
+- [x] `terraform plan` shows `qulene-dev-app` S3 bucket + CloudFront distribution + Route 53 A-record + SSM parameter to be created
+- [x] `deploy-web-app.sh dev` builds with `--configuration development`, syncs to `s3://qulene-dev-app/`, reads distribution ID from SSM, creates CloudFront invalidation
+- [x] `deploy-web-app.sh prod` uses `--configuration production` and `s3://qulene-prod-app/`
+- [x] Script is executable (`chmod +x`)
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

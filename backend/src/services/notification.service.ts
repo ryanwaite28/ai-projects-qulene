@@ -1,14 +1,67 @@
 import { randomUUID } from 'crypto';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import type { SESClient } from '@aws-sdk/client-ses';
+import type { Notification } from '@qulene/api-types';
 import { getRequestById, listByService, updateRequestStatus } from '../db/tables/appointment-requests.table.js';
 import { getBusinessById } from '../db/tables/business-profiles.table.js';
 import { getServiceById } from '../db/tables/services.table.js';
 import { getEntryById } from '../db/tables/waitlist-entries.table.js';
-import { getUserById, incrementUnreadCount } from '../db/tables/users.table.js';
-import { putNotification } from '../db/tables/notifications.table.js';
+import { getUserById, incrementUnreadCount, decrementUnreadCount } from '../db/tables/users.table.js';
+import { getNotificationById, listByUser, markRead, putNotification } from '../db/tables/notifications.table.js';
 import { renderTemplate } from '../emails/email.renderer.js';
 import { sendEmail } from '../clients/ses.client.js';
+
+// ─── Error types ──────────────────────────────────────────────────────────────
+
+export class NotificationNotFoundError extends Error {
+  readonly code = 'NOT_FOUND';
+  constructor(notificationId: string) {
+    super(`Notification not found: ${notificationId}`);
+  }
+}
+
+export class NotificationForbiddenError extends Error {
+  readonly code = 'FORBIDDEN';
+  constructor() {
+    super('You do not have permission to access this notification');
+  }
+}
+
+// ─── Read endpoints (Phase 6a) ────────────────────────────────────────────────
+
+export interface NotificationListResult {
+  items: Notification[];
+  nextCursor: string | null;
+}
+
+export async function listForUser(
+  dynamo: DynamoDBDocumentClient,
+  input: { userId: string; limit?: number; cursor?: string },
+): Promise<NotificationListResult> {
+  const start = Date.now();
+  const result = await listByUser(dynamo, input.userId, input.limit ?? 20, input.cursor);
+  console.log(JSON.stringify({ level: 'info', action: 'listForUser', durationMs: Date.now() - start }));
+  return { items: result.items, nextCursor: result.nextCursor };
+}
+
+export async function markAsRead(
+  dynamo: DynamoDBDocumentClient,
+  input: { userId: string; notificationId: string },
+): Promise<Notification> {
+  const start = Date.now();
+  const notification = await getNotificationById(dynamo, input.notificationId);
+  if (!notification) throw new NotificationNotFoundError(input.notificationId);
+  if (notification.userId !== input.userId) throw new NotificationForbiddenError();
+  if (notification.isRead) {
+    console.log(JSON.stringify({ level: 'info', action: 'markAsRead', durationMs: Date.now() - start, note: 'already read' }));
+    return notification;
+  }
+  await markRead(dynamo, input.notificationId);
+  await decrementUnreadCount(dynamo, input.userId);
+  const updated: Notification = { ...notification, isRead: true };
+  console.log(JSON.stringify({ level: 'info', action: 'markAsRead', durationMs: Date.now() - start }));
+  return updated;
+}
 
 function formatProposedAt(isoString: string): string {
   return new Intl.DateTimeFormat('en-US', {

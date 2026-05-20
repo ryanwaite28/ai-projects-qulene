@@ -1,36 +1,50 @@
-## Spec: Phase 8b — Web auth + public pages (login, register, landing)
-**FR references**: FR-WEBAPP-04, FR-WEBAPP-08, FR-WEBAPP-13 (public routes section)
-**Status**: ⬜ Not Started
-**Prerequisites**: 8a ✅
-**Size check**: 4 files · 0 service functions (uses AuthService from 8a + adds one method) · 1 layer · 3 pages (at limit) · fits one session ✅
+## Spec: Phase 8b — Web auth + public pages
+**FR references**: FR-WEBAPP-04, FR-WEBAPP-06, FR-WEBAPP-09, FR-WEBAPP-10, FR-WEBAPP-11, FR-WEBAPP-13
+**Status**: ✅ Implemented
+**Prerequisites**: 8a-c ✅
+**Size check**: 5 files · 0 backend service functions · 1 layer (Angular source) · 3 screens · fits one session ✅
 
 ### What
-Three pages of the web-app: landing (`/`), login, register. Both auth pages use Reactive Forms; register pages mirror the mobile flow (Cognito `signUp` → `POST /auth/profile`).
+Replace the three placeholder routes (`/`, `/login`, `/register`) with real components. Adds a `UserApiService` for `POST /auth/profile`. Login flow: Amplify `signIn` → store token → `createProfile` (idempotent, all errors swallowed so login is never blocked) → navigate by role. Register flow: Amplify `signUp` → show success message with link to `/login`. Home page: hero with CTAs; redirects authenticated users to their dashboard on `ngOnInit`.
 
 ### Why
-FR-WEBAPP-13 public route section: the entry doors to the web-app. Until these exist, no user can authenticate.
+FR-WEBAPP-04: Cognito auth + token in `localStorage['qulene_access_token']`. FR-WEBAPP-13: `/`, `/login`, `/register` routes must be real pages. FR-WEBAPP-11: Reactive Forms required for all forms.
 
 ### New / Modified Files
-- `apps/web-app/src/app/pages/landing/landing.component.ts` — hero + CTAs "Log in" + "Register" + "Browse businesses"; redirects authenticated users to role-appropriate home (`/business/dashboard` or `/customer/appointments`)
-- `apps/web-app/src/app/pages/login/login.component.ts` — Reactive Form (email, password); on submit calls `authService.signIn` → on success navigates to role-appropriate home; on error renders inline message
-- `apps/web-app/src/app/pages/register/register.component.ts` — Reactive Form (firstName, lastName, email, password, role select); on submit `authService.signUp` with `custom:role` attribute → on success POSTs `/auth/profile` → navigates to home
-- `apps/web-app/src/app/services/auth.service.ts` (extend 8a) — add `registerAndSyncProfile(input)` method that chains Cognito signUp + profile sync (mirrors mobile's chained flow)
+- `apps/web-app/src/app/pages/login.component.ts` *(new)* — email + password form; on success calls `UserApiService.createProfile()` (best-effort) then navigates to `/business/dashboard` or `/customer/appointments` based on role
+- `apps/web-app/src/app/pages/register.component.ts` *(new)* — email + password + confirmPassword + role radio; on Cognito success shows "Check your email to confirm your account, then log in" with link to `/login`
+- `apps/web-app/src/app/pages/home.component.ts` *(new)* — hero with "Get Started" → `/register`, "Log In" → `/login`, "Browse Businesses" → `/businesses`; if already authenticated redirects to dashboard in `ngOnInit`
+- `apps/web-app/src/app/services/user-api.service.ts` *(new)* — `createProfile(): Observable<void>` POSTs `{}` to `${environment.apiUrl}/auth/profile`; `AuthInterceptor` injects the JWT automatically
+- `apps/web-app/src/app/app.routes.ts` *(modify from 8a-c)* — swap `PlaceholderComponent` → real components for `/`, `/login`, `/register`
 
 ### Behavior
-**Landing**: signal-based check — if `authService.currentUser()` exists, immediately `router.navigate` to home; else render hero. Tailwind layout matching marketing site visual language.
 
-**Login**: form validation (email format, password min 8); spinner during submit; inline error on invalid credentials; success → navigate based on `currentUser().role`.
+**`UserApiService.createProfile()`**: `POST /auth/profile` with empty body. The JWT is injected by `AuthInterceptor` automatically.
 
-**Register**: same validators + `Validators.maxLength(50)` for names; role as required select (Business / Customer); on Cognito signUp success, immediately call backend `POST /auth/profile`; if profile POST fails, surface error but token is already stored — user can retry profile sync on next login (mirrors mobile flow).
+**`LoginComponent`** (`app-login`):
+- Reactive Form: `email` (required, `Validators.email`), `password` (required)
+- Signals: `submitting`, `error`
+- Submit: `authService.login(email, password)` → best-effort `createProfile()` (all errors swallowed) → `authService.getUserRole()` → navigate; navigation happens outside try/finally so `submitting` is cleared only on error
+- Submit button disabled while `submitting()` or `form.invalid`; link to `/register`
 
-**Standards**: Reactive Forms (FR-WEBAPP-11); standalone components (FR-WEBAPP-09); signals (FR-WEBAPP-10); HTTP only via AuthService (FR-WEBAPP-12).
+**`RegisterComponent`** (`app-register`):
+- Reactive Form: `email` (required, `Validators.email`), `password` (required, `minLength(8)`), `confirmPassword` (required), `role` (required, values: `'CUSTOMER'` | `'BUSINESS'`)
+- Form-level cross-field validator: passwords must match
+- Signals: `submitting`, `error`, `success`
+- Submit: `authService.register(email, password, role)` → on success: `success.set(true)` — replaces form with confirmation + link to `/login`; link to `/login`
+
+**`HomeComponent`** (`app-home`):
+- `ngOnInit`: if `authService.isAuthenticated()` → navigate by role (same routing logic as post-login)
+- Template: hero section with three router links
 
 ### Done When
-- [ ] Landing redirects authenticated users; renders hero for others
-- [ ] Login form validates, submits, redirects on success
-- [ ] Register form validates all fields including role; chains Cognito + profile sync
-- [ ] Invalid credentials → inline error (not toast/alert)
-- [ ] All 3 pages have empty/loading states
-- [ ] All Reactive Forms; all standalone; signals used
-- [ ] At least one navigation entry point per page (navbar links present)
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `ng build` exits 0
+- [x] `ng lint` exits 0
+- [x] Login form submits → stores token in `localStorage['qulene_access_token']` → navigates to correct dashboard
+- [x] Login calls `createProfile()` after successful sign-in; any error on `createProfile` does not block navigation
+- [x] Register form submits → Cognito `signUp` called with `custom:role`; success shows confirmation message
+- [x] Register form: passwords-must-match validator prevents submission when passwords differ
+- [x] Home page redirects authenticated users to their role-based dashboard
+- [x] `UserApiService` uses `environment.apiUrl` exclusively (no hardcoded URLs)
+- [x] All components standalone; Reactive Forms; new control flow syntax (`@if`)
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

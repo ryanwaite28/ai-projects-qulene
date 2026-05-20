@@ -1,6 +1,6 @@
 ## Spec: Phase 8e1 — Web business dashboard + profile (with avatar upload)
 **FR references**: FR-WEBAPP-13 (`/business/dashboard`, `/business/profile`), FR-APT-05, FR-APT-06, FR-APT-07, FR-APT-08, FR-APT-10, FR-BIZ-02, FR-BIZ-06
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 2a ✅, 3c ✅, 8a ✅
 **Size check**: 3 files · 0 services (uses BusinessService from 8c + AppointmentService from 8d1) · 1 layer · 2 pages · fits one session ✅
 
@@ -23,9 +23,9 @@ FR-WEBAPP-13 business route group + the core operational surface for business us
 **Standards**: Reactive Forms; signals; standalone; service-layer HTTP only.
 
 ### Done When
-- [ ] Dashboard renders requests with correct action buttons per status
-- [ ] Accept/Decline/Complete/No-Show all work + update row
-- [ ] Profile form submits + persists; avatar upload works end-to-end
-- [ ] Empty + loading states present
-- [ ] Navigation entry points: business sidebar links
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] Dashboard renders requests with correct action buttons per status
+- [x] Accept/Decline/Complete/No-Show all work + update row
+- [x] Profile form submits + persists; avatar upload works end-to-end
+- [x] Empty + loading states present
+- [x] Navigation entry points: business sidebar links
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

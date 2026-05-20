@@ -442,11 +442,11 @@ The notification Lambda:
 - **Prerequisites**: 5c ✅ (notifications table exists from Phase 3a; this phase adds read endpoints + unread counter)
 - **Key files**: `backend/src/services/notification.service.ts` (extend), `backend/src/services/user.service.ts`, `backend/src/handlers/user.handler.ts`, `backend/src/handlers/notification.handler.ts` (extend), `infra/terraform/modules/lambda-users/main.tf`, tests
 - **Done When**:
-  - [ ] `GET /notifications` (paginated)
-  - [ ] `PATCH /notifications/:notificationId/read` (atomic decrement of `unreadNotificationCount`)
-  - [ ] `GET /users/me` returns `unreadNotificationCount`
-  - [ ] `PATCH /users/me` updates `firstName`/`lastName`
-  - [ ] Atomic counter operations tested
+  - [x] `GET /notifications` (paginated)
+  - [x] `PATCH /notifications/:notificationId/read` (atomic decrement of `unreadNotificationCount`)
+  - [x] `GET /users/me` returns `unreadNotificationCount`
+  - [x] `PATCH /users/me` updates `firstName`/`lastName`
+  - [x] Atomic counter operations tested
 
 #### 6b — Mobile notifications screen + unread badge
 
@@ -470,12 +470,19 @@ The notification Lambda:
 - **Key files**: `apps/marketing/{package.json,angular.json,tsconfig.json,tailwind.config.js}`, `apps/marketing/src/{main.ts,index.html,styles.css}`, `apps/marketing/src/app/{app.config.ts,app.routes.ts}`, `apps/marketing/src/app/pages/{home,about,how-it-works}.component.ts`
 - **Done When**: `ng build` exits 0; `ng lint` exits 0; 3 pages route correctly via Angular Router
 
-#### 7c — Marketing remaining pages + Contact form + waitlist signup
+#### 7c-a — Marketing static pages + environments + HttpClient config
 
-- **Spec**: `specs/07c-marketing-forms.md`
-- **Prerequisites**: 7a ✅, 7b ✅
-- **Key files**: `apps/marketing/src/app/pages/{pricing,contact,privacy,terms}.component.ts`, `apps/marketing/src/app/services/marketing-api.service.ts`
-- **Done When**: Contact form POSTs to `/web/contact` and shows success/error; waitlist signup posts to `/web/signup`
+- **Spec**: `specs/07ca-marketing-static-pages.md`
+- **Prerequisites**: 7b ✅
+- **Key files**: `apps/marketing/src/environments/{environment.ts,environment.prod.ts}`, `apps/marketing/src/app/app.config.ts` (modify), `apps/marketing/src/app/app.routes.ts` (modify), `apps/marketing/src/app/pages/{pricing,privacy,terms}.component.ts`
+- **Done When**: `ng build` exits 0; pricing/privacy/terms routes render real components; `provideHttpClient(withFetch())` in app config
+
+#### 7c-b — Marketing dynamic features: Contact form + Waitlist signup widget
+
+- **Spec**: `specs/07cb-marketing-forms.md`
+- **Prerequisites**: 7a ✅, 7c-a ✅
+- **Key files**: `apps/marketing/src/app/services/marketing-api.service.ts`, `apps/marketing/src/app/pages/contact.component.ts`, `apps/marketing/src/app/components/waitlist-signup.component.ts`, `apps/marketing/src/app/app.routes.ts` (modify), `apps/marketing/src/app/pages/{home,how-it-works}.component.ts` (modify)
+- **Done When**: Contact form POSTs to `/web/contact`; waitlist widget POSTs to `/web/signup`; both show success/error states
 
 #### 7d — Marketing Terraform deploy (S3 + CloudFront + Route 53)
 
@@ -486,12 +493,26 @@ The notification Lambda:
 
 ### Phase 8 — Angular Web Application
 
-#### 8a — Web-app scaffold + auth.service + interceptors + guards + routing
+#### 8a-a — Web-app project config scaffold
 
-- **Spec**: `specs/08a-webapp-scaffold.md`
+- **Spec**: `specs/08aa-webapp-config.md`
 - **Prerequisites**: 1b ✅
-- **Key files**: `apps/web-app/{package.json,angular.json,tsconfig.json,tailwind.config.js}`, `apps/web-app/src/{main.ts,index.html,styles.css}`, `apps/web-app/src/app/{app.config.ts,app.routes.ts}`, `apps/web-app/src/app/services/auth.service.ts`, `apps/web-app/src/app/interceptors/auth.interceptor.ts`, `apps/web-app/src/app/guards/{auth.guard.ts,role.guard.ts}`
-- **Done When**: `ng build` exits 0; `ng lint` exits 0; guards + interceptor wired in `app.config.ts`
+- **Key files**: `apps/web-app/package.json` (modify), `apps/web-app/{angular.json,tsconfig.json,tailwind.config.js,.eslintrc.json}` (new)
+- **Done When**: `npm install` succeeds; Angular 21.x + Amplify packages installed; `ng version` shows correct version
+
+#### 8a-b — Web-app bootstrap: app skeleton + environments
+
+- **Spec**: `specs/08ab-webapp-bootstrap.md`
+- **Prerequisites**: 8a-a ✅
+- **Key files**: `apps/web-app/src/{index.html,styles.css,main.ts}`, `apps/web-app/src/environments/{environment.ts,environment.prod.ts}`, `apps/web-app/src/app/{app.component.ts,app.config.ts,app.routes.ts}`
+- **Done When**: `ng build` exits 0; `ng lint` exits 0; minimal app bootstraps
+
+#### 8a-c — Web-app auth machinery: AuthService + interceptor + guards + routes
+
+- **Spec**: `specs/08ac-webapp-auth.md`
+- **Prerequisites**: 8a-b ✅
+- **Key files**: `apps/web-app/src/app/services/auth.service.ts`, `apps/web-app/src/app/interceptors/auth.interceptor.ts`, `apps/web-app/src/app/guards/{auth.guard.ts,role.guard.ts}`, `apps/web-app/src/app/pages/placeholder.component.ts`; `app.config.ts` + `app.routes.ts` modified
+- **Done When**: all 15 routes resolve to placeholder; AuthGuard blocks unauthenticated; RoleGuard blocks wrong-role; interceptor injects Bearer + clears on 401/403
 
 #### 8b — Web auth + public pages (login, register, landing)
 
@@ -506,11 +527,17 @@ The notification Lambda:
 - **Prerequisites**: 2a ✅, 2b ✅, 2c ✅, 8a ✅
 - **Key files**: `apps/web-app/src/app/services/business.service.ts`, `apps/web-app/src/app/pages/{businesses,business-detail}/*.component.ts`
 
-#### 8d1 — Web customer appointments + waitlist pages
+#### 8d1-a — Web customer appointments page
 
-- **Spec**: `specs/08d1-webapp-customer-bookings.md`
-- **Prerequisites**: 3b ✅, 4a ✅, 8a ✅
-- **Key files**: `apps/web-app/src/app/services/{appointment.service.ts,waitlist.service.ts}`, `apps/web-app/src/app/pages/customer/{appointments,waitlist}/*.component.ts`
+- **Spec**: `specs/08d1a-customer-appointments.md`
+- **Prerequisites**: 3b ✅, 8a-c ✅
+- **Key files**: `apps/web-app/src/app/services/appointment.service.ts`, `apps/web-app/src/app/pages/customer-appointments.component.ts`
+
+#### 8d1-b — Web customer waitlist page
+
+- **Spec**: `specs/08d1b-customer-waitlist.md`
+- **Prerequisites**: 4a ✅, 8d1-a ✅
+- **Key files**: `apps/web-app/src/app/services/waitlist.service.ts`, `apps/web-app/src/app/pages/customer-waitlist.component.ts`
 
 #### 8d2 — Web customer notifications + profile pages
 
@@ -518,17 +545,29 @@ The notification Lambda:
 - **Prerequisites**: 6a ✅, 8a ✅
 - **Key files**: `apps/web-app/src/app/services/{notification.service.ts,user.service.ts}`, `apps/web-app/src/app/pages/customer/{notifications,profile}/*.component.ts`
 
-#### 8e1 — Web business dashboard + profile (with avatar upload)
+#### 8e1-a — Web business dashboard (list + accept + decline)
 
-- **Spec**: `specs/08e1-webapp-business-dashboard-profile.md`
-- **Prerequisites**: 2a ✅, 3c ✅, 8a ✅
-- **Key files**: `apps/web-app/src/app/pages/business/{dashboard,profile}/*.component.ts`
+- **Spec**: `specs/08e1a-webapp-business-dashboard.md`
+- **Prerequisites**: 3c ✅, 8a-c ✅, 8d1-a ✅
+- **Key files**: `apps/web-app/src/app/services/appointment.service.ts` (extended), `apps/web-app/src/app/pages/business-dashboard.component.ts`
 
-#### 8e2 — Web business services + availability pages
+#### 8e1-b — Web business complete/noshow + profile page
 
-- **Spec**: `specs/08e2-webapp-business-services-availability.md`
-- **Prerequisites**: 2b ✅, 2c ✅, 8a ✅
-- **Key files**: `apps/web-app/src/app/pages/business/{services,availability}/*.component.ts`
+- **Spec**: `specs/08e1b-webapp-business-profile.md`
+- **Prerequisites**: 2a ✅, 8e1-a ✅
+- **Key files**: `apps/web-app/src/app/services/business.service.ts` (extended), `apps/web-app/src/app/pages/business-profile.component.ts`
+
+#### 8e2-a — Web business services management page
+
+- **Spec**: `specs/08e2a-webapp-business-services.md`
+- **Prerequisites**: 2b ✅, 8c ✅, 8e1-b ✅
+- **Key files**: `apps/web-app/src/app/services/service-management.service.ts`, `apps/web-app/src/app/pages/business-services.component.ts`
+
+#### 8e2-b — Web business availability management page
+
+- **Spec**: `specs/08e2b-webapp-business-availability.md`
+- **Prerequisites**: 2c ✅, 8e2-a ✅
+- **Key files**: `apps/web-app/src/app/services/availability.service.ts`, `apps/web-app/src/app/pages/business-availability.component.ts`
 
 #### 8e3 — Web business waitlist + notifications pages
 
@@ -633,22 +672,28 @@ and reported your findings.
 | 5a | Notification Terraform | `specs/05a-notification-terraform.md` | ✅ Complete | 2026-05-18 |
 | 5b | Email rendering | `specs/05b-email-rendering.md` | ✅ Complete | 2026-05-18 |
 | 5c | Notification consumer | `specs/05c-notification-consumer.md` | ✅ Complete | 2026-05-18 |
-| 6a | Backend notifications endpoints | `specs/06a-notifications-backend.md` | ⬜ Not Started | — |
-| 6b | Mobile notifications + badge | `specs/06b-notifications-mobile.md` | ⬜ Not Started | — |
-| 7a | Backend marketing endpoints | `specs/07a-marketing-backend.md` | ⬜ Not Started | — |
-| 7b | Marketing scaffold + core pages | `specs/07b-marketing-scaffold.md` | ⬜ Not Started | — |
-| 7c | Marketing remaining pages + forms | `specs/07c-marketing-forms.md` | ⬜ Not Started | — |
-| 7d | Marketing Terraform deploy | `specs/07d-marketing-deploy.md` | ⬜ Not Started | — |
-| 8a | Web-app scaffold + auth + guards | `specs/08a-webapp-scaffold.md` | ⬜ Not Started | — |
-| 8b | Web auth + public pages | `specs/08b-webapp-auth-pages.md` | ⬜ Not Started | — |
-| 8c | Web public business browsing | `specs/08c-webapp-public-browse.md` | ⬜ Not Started | — |
-| 8d1 | Web customer appointments + waitlist | `specs/08d1-webapp-customer-bookings.md` | ⬜ Not Started | — |
-| 8d2 | Web customer notifications + profile | `specs/08d2-webapp-customer-account.md` | ⬜ Not Started | — |
-| 8e1 | Web business dashboard + profile | `specs/08e1-webapp-business-dashboard-profile.md` | ⬜ Not Started | — |
-| 8e2 | Web business services + availability | `specs/08e2-webapp-business-services-availability.md` | ⬜ Not Started | — |
-| 8e3 | Web business waitlist + notifications | `specs/08e3-webapp-business-waitlist-notifications.md` | ⬜ Not Started | — |
-| 8f | Web-app Terraform deploy | `specs/08f-webapp-deploy.md` | ⬜ Not Started | — |
-| 9a | CI/CD workflows | `specs/09a-ci-cd.md` | ⬜ Not Started | — |
+| 6a | Backend notifications endpoints | `specs/06a-notifications-backend.md` | ✅ Complete | 2026-05-18 |
+| 6b | Mobile notifications + badge | `specs/06b-notifications-mobile.md` | ✅ Complete | 2026-05-18 |
+| 7a | Backend marketing endpoints | `specs/07a-marketing-backend.md` | ✅ Complete | 2026-05-18 |
+| 7b | Marketing scaffold + core pages | `specs/07b-marketing-scaffold.md` | ✅ Complete | 2026-05-18 |
+| 7c-a | Marketing static pages + HttpClient config | `specs/07ca-marketing-static-pages.md` | ✅ Complete | 2026-05-18 |
+| 7c-b | Marketing Contact form + Waitlist widget | `specs/07cb-marketing-forms.md` | ✅ Complete | 2026-05-18 |
+| 7d | Marketing Terraform deploy | `specs/07d-marketing-deploy.md` | ✅ Complete | 2026-05-18 |
+| 8a-a | Web-app project config scaffold | `specs/08aa-webapp-config.md` | ✅ Complete | 2026-05-18 |
+| 8a-b | Web-app bootstrap: app skeleton + environments | `specs/08ab-webapp-bootstrap.md` | ✅ Complete | 2026-05-18 |
+| 8a-c | Web-app auth: AuthService + interceptor + guards + routes | `specs/08ac-webapp-auth.md` | ✅ Complete | 2026-05-19 |
+| 8b | Web auth + public pages | `specs/08b-webapp-auth-pages.md` | ✅ Complete | 2026-05-19 |
+| 8c | Web public business browsing | `specs/08c-webapp-public-browse.md` | ✅ Complete | 2026-05-19 |
+| 8d1-a | Web customer appointments page | `specs/08d1a-customer-appointments.md` | ✅ Complete | 2026-05-19 |
+| 8d1-b | Web customer waitlist page | `specs/08d1b-customer-waitlist.md` | ✅ Complete | 2026-05-19 |
+| 8d2 | Web customer notifications + profile | `specs/08d2-webapp-customer-account.md` | ✅ Complete | 2026-05-19 |
+| 8e1-a | Web business dashboard (list + accept + decline) | `specs/08e1a-webapp-business-dashboard.md` | ✅ Complete | 2026-05-19 |
+| 8e1-b | Web business complete/noshow + profile page | `specs/08e1b-webapp-business-profile.md` | ✅ Complete | 2026-05-19 |
+| 8e2-a | Web business services management | `specs/08e2a-webapp-business-services.md` | ✅ Complete | 2026-05-19 |
+| 8e2-b | Web business availability management | `specs/08e2b-webapp-business-availability.md` | ✅ Complete | 2026-05-19 |
+| 8e3 | Web business waitlist + notifications | `specs/08e3-webapp-business-waitlist-notifications.md` | ✅ Complete | 2026-05-19 |
+| 8f | Web-app Terraform deploy | `specs/08f-webapp-deploy.md` | ✅ Complete | 2026-05-19 |
+| 9a | CI/CD workflows | `specs/09a-ci-cd.md` | ✅ Complete | 2026-05-19 |
 | 9b | Observability (logs + alarms) | `specs/09b-observability.md` | ⬜ Not Started | — |
 | 9c | Secrets + IAM least-privilege | `specs/09c-secrets-iam.md` | ⬜ Not Started | — |
 | 10a | Design pass | `specs/10a-design-pass.md` | ⬜ Not Started | — |

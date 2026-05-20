@@ -1,6 +1,6 @@
 ## Spec: Phase 7b — Marketing Angular scaffold + routing + 3 core pages
 **FR references**: FR-MKT-01, FR-MKT-02 (Home, About, How It Works), FR-MKT-04
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented
 **Prerequisites**: 0b ✅
 **Size check**: 8 files · 0 service functions · 1 layer (frontend) · 3 pages (at limit) · fits one session ✅
 
@@ -31,10 +31,10 @@ FR-MKT-01/02/04: a polished marketing SPA at `qulene.com` is required for portfo
 **Layout**: every page renders inside `<marketing-layout>` (navbar + content slot + footer); navbar links visible on all pages.
 
 ### Done When
-- [ ] `ng build` exits 0 — produces `dist/marketing/browser/`
-- [ ] `ng lint` exits 0
-- [ ] `ng serve --port 8080` renders all 3 implemented pages
-- [ ] Routes for Pricing/Contact/Privacy/Terms resolve to placeholder without errors
-- [ ] All components standalone; new control flow syntax used; no `NgModule` anywhere
-- [ ] Tailwind classes applied; pages mobile-responsive
-- [ ] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated
+- [x] `ng build` exits 0 — produces `dist/marketing/browser/`
+- [x] `ng lint` exits 0
+- [x] `ng serve --port 8080` renders all 3 implemented pages
+- [x] Routes for Pricing/Contact/Privacy/Terms resolve to placeholder without errors
+- [x] All components standalone; new control flow syntax used; no `NgModule` anywhere
+- [x] Tailwind classes applied; pages mobile-responsive
+- [x] Spec status updated to ✅ Implemented; `IMPLEMENTATION_PLAN.md` updated

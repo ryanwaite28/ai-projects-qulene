@@ -768,6 +768,74 @@ resource "aws_apigatewayv2_route" "patch_businesses_me_appointments_noshow" {
 }
 
 ###############################################################################
+# Phase 6a — Lambda: users (notifications list + mark read + user profile)
+###############################################################################
+
+module "lambda_users" {
+  source = "../../modules/lambda-users"
+
+  environment              = var.environment
+  aws_region               = var.aws_region
+  users_table_name         = module.dynamodb_users.table_name
+  users_table_arn          = module.dynamodb_users.table_arn
+  notifications_table_name = module.dynamodb_notifications.table_name
+  notifications_table_arn  = module.dynamodb_notifications.table_arn
+}
+
+# Allow API Gateway to invoke lambda-users
+resource "aws_lambda_permission" "api_gw_users" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda_users.function_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.api_gateway.execution_arn}/*/*"
+}
+
+# Integration: API Gateway → lambda-users
+resource "aws_apigatewayv2_integration" "lambda_users" {
+  api_id                 = module.api_gateway.api_id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = module.lambda_users.invoke_arn
+  payload_format_version = "2.0"
+}
+
+# Route: GET /notifications — JWT required (any role)
+resource "aws_apigatewayv2_route" "get_notifications" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "GET /notifications"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_users.id}"
+}
+
+# Route: PATCH /notifications/{notificationId}/read — JWT required (any role)
+resource "aws_apigatewayv2_route" "patch_notification_read" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "PATCH /notifications/{notificationId}/read"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_users.id}"
+}
+
+# Route: GET /users/me — JWT required (any role)
+resource "aws_apigatewayv2_route" "get_users_me" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "GET /users/me"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_users.id}"
+}
+
+# Route: PATCH /users/me — JWT required (any role)
+resource "aws_apigatewayv2_route" "patch_users_me" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "PATCH /users/me"
+  authorization_type = "JWT"
+  authorizer_id      = module.api_gateway.jwt_authorizer_id
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_users.id}"
+}
+
+###############################################################################
 # Phase 5a — SQS notification queue + DLQ + SNS subscription
 ###############################################################################
 
@@ -798,6 +866,82 @@ module "lambda_notification" {
   services_table_arn              = module.dynamodb_services.table_arn
   waitlist_entries_table_name     = module.dynamodb_waitlist_entries.table_name
   waitlist_entries_table_arn      = module.dynamodb_waitlist_entries.table_arn
+}
+
+###############################################################################
+# Phase 7a — DynamoDB: web-signups + Lambda: contact (public marketing endpoints)
+###############################################################################
+
+module "dynamodb_web_signups" {
+  source      = "../../modules/dynamodb-web-signups"
+  environment = var.environment
+}
+
+module "lambda_contact" {
+  source = "../../modules/lambda-contact"
+
+  environment            = var.environment
+  aws_region             = var.aws_region
+  web_signups_table_name = module.dynamodb_web_signups.table_name
+  web_signups_table_arn  = module.dynamodb_web_signups.table_arn
+  admin_email            = var.admin_email
+}
+
+# Allow API Gateway to invoke lambda-contact
+resource "aws_lambda_permission" "api_gw_contact" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda_contact.function_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.api_gateway.execution_arn}/*/*"
+}
+
+# Integration: API Gateway → lambda-contact
+resource "aws_apigatewayv2_integration" "lambda_contact" {
+  api_id                 = module.api_gateway.api_id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = module.lambda_contact.invoke_arn
+  payload_format_version = "2.0"
+}
+
+# Route: POST /web/contact — no auth (public marketing endpoint)
+resource "aws_apigatewayv2_route" "post_web_contact" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "POST /web/contact"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_contact.id}"
+}
+
+# Route: POST /web/signup — no auth (public marketing endpoint)
+resource "aws_apigatewayv2_route" "post_web_signup" {
+  api_id             = module.api_gateway.api_id
+  route_key          = "POST /web/signup"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_contact.id}"
+}
+
+###############################################################################
+# Phase 7d — Marketing SPA hosting (S3 + CloudFront + Route 53)
+###############################################################################
+
+module "marketing" {
+  source = "../../modules/marketing"
+
+  environment         = var.environment
+  hosted_zone_id      = data.aws_ssm_parameter.hosted_zone_id.value
+  acm_certificate_arn = data.aws_ssm_parameter.acm_certificate_arn.value
+}
+
+###############################################################################
+# Phase 8f — Web app SPA hosting (S3 + CloudFront + Route 53)
+###############################################################################
+
+module "webapp" {
+  source = "../../modules/webapp"
+
+  environment         = var.environment
+  hosted_zone_id      = data.aws_ssm_parameter.hosted_zone_id.value
+  acm_certificate_arn = data.aws_ssm_parameter.acm_certificate_arn.value
 }
 
 ###############################################################################

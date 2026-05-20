@@ -1,6 +1,6 @@
 ## Spec: Phase 7c — Marketing remaining pages + Contact form + waitlist signup
 **FR references**: FR-MKT-02 (Pricing, Contact, Privacy, Terms), FR-MKT-03, FR-MKT-05
-**Status**: ⬜ Not Started
+**Status**: ✅ Implemented (superseded — split into specs/07ca-marketing-static.md and specs/07cb-marketing-forms.md, both ✅ Complete 2026-05-18)
 **Prerequisites**: 7a ✅, 7b ✅
 **Size check**: 6 files · 1 service · 1 layer · 4 pages — exceeds 3-screen limit. Justification: 3 of the 4 (Pricing, Privacy, Terms) are pure-static content components with zero state and one Tailwind layout each; the only logic-bearing page is Contact. Treating Pricing/Privacy/Terms as content fixtures (not "screens" in the Spec Sizing sense), this fits one session ✅
 
