@@ -8,6 +8,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'portrait',
   userInterfaceStyle: 'light',
   scheme: 'qulene',
+  plugins: [
+    'expo-router',
+    'expo-secure-store',
+  ],
   extra: {
     eas: {
       projectId: process.env.EXPO_PROJECT_ID,

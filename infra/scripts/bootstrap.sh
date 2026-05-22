@@ -210,6 +210,244 @@ bootstrap_local() {
     aws_local ses verify-email-identity --email-address "$SES_SENDER" >/dev/null
     mark_created "SES identity $SES_SENDER"
   fi
+
+  # DynamoDB tables
+  provision_dynamodb_local
+
+  # Cognito User Pool + App Client
+  provision_cognito_local
+
+  # API Gateway v2 HTTP API + JWT authorizer
+  provision_apigw_local
+}
+
+# ─── LOCAL: DynamoDB tables ────────────────────────────────────────────────────
+
+dynamo_create_local() {
+  local name="$1"; shift
+  if aws_local dynamodb describe-table --table-name "$name" >/dev/null 2>&1; then
+    mark_skipped "DynamoDB $name (exists)"
+  else
+    aws_local dynamodb create-table --table-name "$name" "$@" >/dev/null
+    mark_created "DynamoDB $name"
+  fi
+}
+
+provision_dynamodb_local() {
+  info "Provisioning DynamoDB tables..."
+
+  dynamo_create_local "qulene-local-users" \
+    --attribute-definitions \
+      AttributeName=userId,AttributeType=S \
+      AttributeName=email,AttributeType=S \
+    --key-schema AttributeName=userId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --global-secondary-indexes \
+      '[{"IndexName":"email-index","KeySchema":[{"AttributeName":"email","KeyType":"HASH"}],"Projection":{"ProjectionType":"ALL"}}]'
+
+  dynamo_create_local "qulene-local-business-profiles" \
+    --attribute-definitions \
+      AttributeName=businessId,AttributeType=S \
+      AttributeName=category,AttributeType=S \
+    --key-schema AttributeName=businessId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --global-secondary-indexes \
+      '[{"IndexName":"category-index","KeySchema":[{"AttributeName":"category","KeyType":"HASH"},{"AttributeName":"businessId","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}}]'
+
+  dynamo_create_local "qulene-local-services" \
+    --attribute-definitions \
+      AttributeName=serviceId,AttributeType=S \
+      AttributeName=businessId,AttributeType=S \
+      AttributeName=createdAt,AttributeType=S \
+    --key-schema AttributeName=serviceId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --global-secondary-indexes \
+      '[{"IndexName":"businessId-index","KeySchema":[{"AttributeName":"businessId","KeyType":"HASH"},{"AttributeName":"createdAt","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}}]'
+
+  dynamo_create_local "qulene-local-availability-windows" \
+    --attribute-definitions \
+      AttributeName=windowId,AttributeType=S \
+      AttributeName=businessId,AttributeType=S \
+    --key-schema AttributeName=windowId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --global-secondary-indexes \
+      '[{"IndexName":"businessId-index","KeySchema":[{"AttributeName":"businessId","KeyType":"HASH"}],"Projection":{"ProjectionType":"ALL"}}]'
+
+  dynamo_create_local "qulene-local-appointment-requests" \
+    --attribute-definitions \
+      AttributeName=requestId,AttributeType=S \
+      AttributeName=businessId,AttributeType=S \
+      AttributeName=status,AttributeType=S \
+      AttributeName=customerId,AttributeType=S \
+      AttributeName=createdAt,AttributeType=S \
+      AttributeName=serviceId,AttributeType=S \
+      AttributeName=idempotencyKey,AttributeType=S \
+    --key-schema AttributeName=requestId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --global-secondary-indexes '[
+      {"IndexName":"businessId-status-index","KeySchema":[{"AttributeName":"businessId","KeyType":"HASH"},{"AttributeName":"status","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}},
+      {"IndexName":"customerId-index","KeySchema":[{"AttributeName":"customerId","KeyType":"HASH"},{"AttributeName":"createdAt","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}},
+      {"IndexName":"serviceId-index","KeySchema":[{"AttributeName":"serviceId","KeyType":"HASH"}],"Projection":{"ProjectionType":"ALL"}},
+      {"IndexName":"idempotencyKey-index","KeySchema":[{"AttributeName":"idempotencyKey","KeyType":"HASH"}],"Projection":{"ProjectionType":"ALL"}}
+    ]'
+
+  dynamo_create_local "qulene-local-waitlist-entries" \
+    --attribute-definitions \
+      AttributeName=entryId,AttributeType=S \
+      AttributeName=serviceId,AttributeType=S \
+      AttributeName=createdAt,AttributeType=S \
+      AttributeName=customerId,AttributeType=S \
+    --key-schema AttributeName=entryId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --global-secondary-indexes '[
+      {"IndexName":"serviceId-status-index","KeySchema":[{"AttributeName":"serviceId","KeyType":"HASH"},{"AttributeName":"createdAt","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}},
+      {"IndexName":"customerId-index","KeySchema":[{"AttributeName":"customerId","KeyType":"HASH"}],"Projection":{"ProjectionType":"ALL"}}
+    ]'
+
+  dynamo_create_local "qulene-local-notifications" \
+    --attribute-definitions \
+      AttributeName=notificationId,AttributeType=S \
+      AttributeName=userId,AttributeType=S \
+      AttributeName=createdAt,AttributeType=S \
+    --key-schema AttributeName=notificationId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --global-secondary-indexes \
+      '[{"IndexName":"userId-createdAt-index","KeySchema":[{"AttributeName":"userId","KeyType":"HASH"},{"AttributeName":"createdAt","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}}]'
+
+  dynamo_create_local "qulene-local-web-signups" \
+    --attribute-definitions \
+      AttributeName=email,AttributeType=S \
+    --key-schema AttributeName=email,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST
+}
+
+# ─── LOCAL: Cognito ────────────────────────────────────────────────────────────
+
+LOCAL_POOL_ID=""
+LOCAL_CLIENT_ID=""
+
+provision_cognito_local() {
+  info "Provisioning Cognito User Pool: qulene-local-userpool"
+
+  # || true prevents set -eo pipefail from exiting when the pool does not exist yet
+  LOCAL_POOL_ID=$(aws_local cognito-idp list-user-pools --max-results 20 --output json 2>/dev/null \
+    | jq -r '.UserPools[] | select(.Name == "qulene-local-userpool") | .Id' 2>/dev/null \
+    | head -1 || true)
+
+  if [ -n "$LOCAL_POOL_ID" ]; then
+    mark_skipped "Cognito User Pool qulene-local-userpool ($LOCAL_POOL_ID)"
+  else
+    LOCAL_POOL_ID=$(aws_local cognito-idp create-user-pool \
+      --pool-name "qulene-local-userpool" \
+      --username-attributes email \
+      --auto-verified-attributes email \
+      --schema '[{"Name":"role","AttributeDataType":"String","Mutable":false,"Required":false,"StringAttributeConstraints":{"MinLength":"1","MaxLength":"16"}}]' \
+      --query 'UserPool.Id' --output text)
+    mark_created "Cognito User Pool qulene-local-userpool ($LOCAL_POOL_ID)"
+  fi
+
+  info "Provisioning Cognito App Client: qulene-local-app-client"
+
+  LOCAL_CLIENT_ID=$(aws_local cognito-idp list-user-pool-clients \
+    --user-pool-id "$LOCAL_POOL_ID" --max-results 20 --output json 2>/dev/null \
+    | jq -r '.UserPoolClients[] | select(.ClientName == "qulene-local-app-client") | .ClientId' 2>/dev/null \
+    | head -1 || true)
+
+  if [ -n "$LOCAL_CLIENT_ID" ]; then
+    mark_skipped "Cognito App Client qulene-local-app-client ($LOCAL_CLIENT_ID)"
+  else
+    LOCAL_CLIENT_ID=$(aws_local cognito-idp create-user-pool-client \
+      --user-pool-id "$LOCAL_POOL_ID" \
+      --client-name "qulene-local-app-client" \
+      --no-generate-secret \
+      --explicit-auth-flows ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+      --read-attributes email "custom:role" \
+      --write-attributes email "custom:role" \
+      --prevent-user-existence-errors ENABLED \
+      --query 'UserPoolClient.ClientId' --output text)
+    mark_created "Cognito App Client qulene-local-app-client ($LOCAL_CLIENT_ID)"
+  fi
+}
+
+# ─── LOCAL: API Gateway v2 ────────────────────────────────────────────────────
+
+LOCAL_API_ID=""
+LOCAL_AUTHORIZER_ID=""
+
+provision_apigw_local() {
+  info "Provisioning API Gateway v2 HTTP API: qulene-local-api"
+
+  # Check if API already exists by name
+  LOCAL_API_ID=$(aws_local apigatewayv2 get-apis --output json 2>/dev/null \
+    | jq -r '.Items[] | select(.Name == "qulene-local-api") | .ApiId' 2>/dev/null \
+    | head -1 || true)
+
+  if [ -n "$LOCAL_API_ID" ]; then
+    mark_skipped "API Gateway HTTP API qulene-local-api ($LOCAL_API_ID)"
+  else
+    LOCAL_API_ID=$(aws_local apigatewayv2 create-api \
+      --name "qulene-local-api" \
+      --protocol-type HTTP \
+      --cors-configuration 'AllowOrigins=["*"],AllowMethods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],AllowHeaders=["Content-Type","Authorization"],MaxAge=300' \
+      --tags '{"ms-custom-id":"qulene-local"}' \
+      --query 'ApiId' --output text)
+    mark_created "API Gateway HTTP API qulene-local-api ($LOCAL_API_ID)"
+  fi
+
+  # $default stage
+  if aws_local apigatewayv2 get-stage --api-id "$LOCAL_API_ID" --stage-name '$default' >/dev/null 2>&1; then
+    mark_skipped "API Gateway stage \$default (exists)"
+  else
+    aws_local apigatewayv2 create-stage \
+      --api-id "$LOCAL_API_ID" \
+      --stage-name '$default' \
+      --auto-deploy >/dev/null
+    mark_created "API Gateway stage \$default"
+  fi
+
+  # JWT authorizer — points at MiniStack Cognito JWKS (issuer = local endpoint)
+  info "Provisioning API Gateway JWT authorizer"
+  LOCAL_AUTHORIZER_ID=$(aws_local apigatewayv2 get-authorizers \
+    --api-id "$LOCAL_API_ID" --output json 2>/dev/null \
+    | jq -r '.Items[] | select(.Name == "cognito-jwt") | .AuthorizerId' 2>/dev/null \
+    | head -1 || true)
+
+  if [ -n "$LOCAL_AUTHORIZER_ID" ]; then
+    mark_skipped "API Gateway JWT authorizer cognito-jwt ($LOCAL_AUTHORIZER_ID)"
+  else
+    local issuer="http://localhost:4566/${LOCAL_POOL_ID}"
+    LOCAL_AUTHORIZER_ID=$(aws_local apigatewayv2 create-authorizer \
+      --api-id "$LOCAL_API_ID" \
+      --name "cognito-jwt" \
+      --authorizer-type JWT \
+      --identity-source '$request.header.Authorization' \
+      --jwt-configuration "Audience=[\"${LOCAL_CLIENT_ID}\"],Issuer=${issuer}" \
+      --query 'AuthorizerId' --output text)
+    mark_created "API Gateway JWT authorizer cognito-jwt ($LOCAL_AUTHORIZER_ID)"
+  fi
+
+  # Persist IDs so deploy-local.sh can consume them without re-querying
+  cat > .local-stack.json <<EOF
+{
+  "poolId": "${LOCAL_POOL_ID}",
+  "clientId": "${LOCAL_CLIENT_ID}",
+  "apiId": "${LOCAL_API_ID}",
+  "authorizerId": "${LOCAL_AUTHORIZER_ID}",
+  "apiBaseUrl": "http://localhost:4566/_aws/execute-api/${LOCAL_API_ID}/\$default"
+}
+EOF
+  success "Local stack state saved to .local-stack.json"
+
+  printf "\n"
+  printf "${COLOR_INFO}  Cognito Pool ID  :${COLOR_RESET} %s\n" "$LOCAL_POOL_ID"
+  printf "${COLOR_INFO}  Cognito Client ID:${COLOR_RESET} %s\n" "$LOCAL_CLIENT_ID"
+  printf "${COLOR_INFO}  API base URL     :${COLOR_RESET} http://localhost:4566/_aws/execute-api/%s/\$default\n" "$LOCAL_API_ID"
+  printf "${COLOR_WARN}  → Update .env: COGNITO_USER_POOL_ID=%s${COLOR_RESET}\n" "$LOCAL_POOL_ID"
+  printf "${COLOR_WARN}  → Update .env: COGNITO_CLIENT_ID=%s${COLOR_RESET}\n" "$LOCAL_CLIENT_ID"
+  printf "${COLOR_WARN}  → Update apps/mobile/.env: EXPO_PUBLIC_COGNITO_USER_POOL_ID=%s${COLOR_RESET}\n" "$LOCAL_POOL_ID"
+  printf "${COLOR_WARN}  → Update apps/mobile/.env: EXPO_PUBLIC_COGNITO_CLIENT_ID=%s${COLOR_RESET}\n" "$LOCAL_CLIENT_ID"
+  printf "${COLOR_WARN}  → Signup confirmation code is always: 123456${COLOR_RESET}\n"
+  printf "\n"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

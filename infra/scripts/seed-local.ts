@@ -4,19 +4,33 @@
  * Run: npm run seed:local
  */
 
+import { readFileSync, existsSync } from 'fs';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 
-const ENDPOINT = process.env.MINISTACK_ENDPOINT ?? 'http://localhost:4566';
-const ENV = process.env.ENV ?? 'dev';
+// Load .env from repo root so the script works without manual env exports
+const envPath = new URL('../../.env', import.meta.url).pathname;
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const idx = t.indexOf('=');
+    if (idx === -1) continue;
+    const key = t.slice(0, idx).trim();
+    const val = t.slice(idx + 1).trim();
+    if (!(key in process.env)) process.env[key] = val;
+  }
+}
+
+const ENDPOINT = process.env.DYNAMODB_ENDPOINT ?? process.env.MINISTACK_ENDPOINT ?? 'http://localhost:4566';
 
 const TABLES = {
-  users:                `qulene-${ENV}-users`,
-  businessProfiles:     `qulene-${ENV}-business-profiles`,
-  services:             `qulene-${ENV}-services`,
-  availabilityWindows:  `qulene-${ENV}-availability-windows`,
-  appointmentRequests:  `qulene-${ENV}-appointment-requests`,
-  waitlistEntries:      `qulene-${ENV}-waitlist-entries`,
+  users:               process.env.USERS_TABLE               ?? 'qulene-local-users',
+  businessProfiles:    process.env.BUSINESS_PROFILES_TABLE   ?? 'qulene-local-business-profiles',
+  services:            process.env.SERVICES_TABLE             ?? 'qulene-local-services',
+  availabilityWindows: process.env.AVAILABILITY_WINDOWS_TABLE ?? 'qulene-local-availability-windows',
+  appointmentRequests: process.env.APPOINTMENT_REQUESTS_TABLE ?? 'qulene-local-appointment-requests',
+  waitlistEntries:     process.env.WAITLIST_ENTRIES_TABLE     ?? 'qulene-local-waitlist-entries',
 };
 
 const dynamo = DynamoDBDocumentClient.from(

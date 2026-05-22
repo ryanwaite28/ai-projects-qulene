@@ -20,7 +20,21 @@
     "build": "npm run build --workspaces --if-present",
     "bootstrap:local": "./infra/scripts/bootstrap.sh --local",
     "bootstrap": "./infra/scripts/bootstrap.sh",
+    "deploy:local": "bash infra/scripts/deploy-local.sh",
     "seed:local": "npx tsx infra/scripts/seed-local.ts"
+  },
+  "overrides": {
+    "metro": "0.81.5",
+    "metro-config": "0.81.5",
+    "metro-core": "0.81.5",
+    "metro-cache": "0.81.5",
+    "metro-cache-key": "0.81.5",
+    "metro-transform-worker": "0.81.5",
+    "metro-babel-transformer": "0.81.5",
+    "metro-runtime": "0.81.5",
+    "metro-source-map": "0.81.5",
+    "metro-resolver": "0.81.5",
+    "metro-file-map": "0.81.5"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

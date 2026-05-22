@@ -96,24 +96,52 @@ Both web clients are served from S3 + CloudFront distributions:
 # 1. Install dependencies
 npm install
 
-# 2. Start MiniStack (local AWS emulation)
+# 2. Copy env file and fill in local values
+cp .env.example .env
+
+# 3. Start MiniStack (local AWS emulation — keep this terminal open)
 docker run -p 4566:4566 nahuelnucera/ministack
+```
 
-# 3. Provision local AWS resources (queues, topics, secrets)
+In a new terminal:
+
+```bash
+# 4. Provision local AWS resources (DynamoDB, Cognito, API Gateway, SQS, SNS, S3, Secrets)
 npm run bootstrap:local
+```
 
-# 4. Seed demo data
+Bootstrap prints the Cognito Pool ID and Client ID. Copy them into `.env`:
+
+```
+COGNITO_USER_POOL_ID=<printed by bootstrap>
+COGNITO_CLIENT_ID=<printed by bootstrap>
+```
+
+Also copy them into `apps/mobile/.env` (create if needed):
+
+```
+EXPO_PUBLIC_COGNITO_USER_POOL_ID=<same pool ID>
+EXPO_PUBLIC_COGNITO_CLIENT_ID=<same client ID>
+```
+
+```bash
+# 5. Build backend and deploy Lambda functions to MiniStack
+npm run deploy:local
+
+# 6. Seed demo data
 npm run seed:local
 
-# 5a. Start the mobile app
+# 7a. Start the mobile app
 npx expo start --ios            # or --android
 
-# 5b. Start the web app
+# 7b. Start the web app
 npm run start -w apps/web-app   # → http://localhost:4200
 
-# 5c. Start the marketing site
+# 7c. Start the marketing site
 npm run start -w apps/marketing # → http://localhost:4201
 ```
+
+> **Note:** MiniStack resets all state when the container restarts. Re-run steps 4–6 after each restart. Step 4 is idempotent — existing resources are skipped.
 
 ### Demo accounts
 
