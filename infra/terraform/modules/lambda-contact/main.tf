@@ -3,11 +3,6 @@ variable "environment" {
   type        = string
 }
 
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-}
-
 variable "web_signups_table_name" {
   description = "Web signups DynamoDB table name"
   type        = string
@@ -40,7 +35,6 @@ module "fn" {
 
   environment_variables = {
     WEB_SIGNUPS_TABLE = var.web_signups_table_name
-    AWS_REGION        = var.aws_region
     DYNAMODB_ENDPOINT = ""
     SES_ENDPOINT      = ""
     SES_FROM_EMAIL    = "no-reply@qulene.com"

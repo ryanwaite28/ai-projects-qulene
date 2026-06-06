@@ -3,11 +3,6 @@ variable "environment" {
   type        = string
 }
 
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-}
-
 variable "users_table_name" {
   description = "Users DynamoDB table name"
   type        = string
@@ -45,7 +40,6 @@ module "fn" {
     USERS_TABLE         = var.users_table_name
     NOTIFICATIONS_TABLE = var.notifications_table_name
     DYNAMODB_ENDPOINT   = ""
-    AWS_REGION          = var.aws_region
   }
 }
 

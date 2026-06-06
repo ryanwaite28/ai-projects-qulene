@@ -3,11 +3,6 @@ variable "environment" {
   type        = string
 }
 
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-}
-
 variable "waitlist_entries_table_name" {
   description = "Waitlist entries DynamoDB table name"
   type        = string
@@ -78,7 +73,6 @@ module "fn" {
     SNS_TOPIC_ARN          = var.sns_topic_arn
     SNS_ENDPOINT           = ""
     DYNAMODB_ENDPOINT      = ""
-    AWS_REGION             = var.aws_region
   }
 }
 

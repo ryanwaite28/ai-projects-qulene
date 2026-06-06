@@ -3,11 +3,6 @@ variable "environment" {
   type        = string
 }
 
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-}
-
 variable "queue_arn" {
   description = "SQS notification queue ARN"
   type        = string
@@ -88,7 +83,6 @@ module "fn" {
     SERVICES_TABLE             = var.services_table_name
     WAITLIST_ENTRIES_TABLE     = var.waitlist_entries_table_name
     SECRETS_NAME               = "qulene-${var.environment}-secrets"
-    AWS_REGION                 = var.aws_region
     DYNAMODB_ENDPOINT          = ""
     SES_ENDPOINT               = ""
   }

@@ -96,7 +96,6 @@ module "lambda_auth" {
   environment_variables = {
     USERS_TABLE       = module.dynamodb_users.table_name
     DYNAMODB_ENDPOINT = ""
-    AWS_REGION        = var.aws_region
   }
 }
 
@@ -230,7 +229,6 @@ module "lambda_businesses" {
     AVAILABILITY_WINDOWS_TABLE = module.dynamodb_availability_windows.table_name
     MEDIA_BUCKET              = aws_s3_bucket.media.bucket
     S3_ENDPOINT               = ""
-    AWS_REGION                = var.aws_region
   }
 }
 
@@ -453,7 +451,6 @@ module "lambda_services" {
     SERVICES_TABLE = module.dynamodb_services.table_name
     SNS_TOPIC_ARN  = aws_sns_topic.events.arn
     SNS_ENDPOINT   = ""
-    AWS_REGION     = var.aws_region
   }
 }
 
@@ -569,7 +566,6 @@ module "lambda_appointments" {
   source = "../../modules/lambda-appointments"
 
   environment                     = var.environment
-  aws_region                      = var.aws_region
   appointment_requests_table_name = module.dynamodb_appointment_requests.table_name
   appointment_requests_table_arn  = module.dynamodb_appointment_requests.table_arn
   notifications_table_name        = module.dynamodb_notifications.table_name
@@ -653,7 +649,6 @@ module "lambda_waitlist" {
   source = "../../modules/lambda-waitlist"
 
   environment                = var.environment
-  aws_region                 = var.aws_region
   waitlist_entries_table_name = module.dynamodb_waitlist_entries.table_name
   waitlist_entries_table_arn  = module.dynamodb_waitlist_entries.table_arn
   notifications_table_name   = module.dynamodb_notifications.table_name
@@ -775,7 +770,6 @@ module "lambda_users" {
   source = "../../modules/lambda-users"
 
   environment              = var.environment
-  aws_region               = var.aws_region
   users_table_name         = module.dynamodb_users.table_name
   users_table_arn          = module.dynamodb_users.table_arn
   notifications_table_name = module.dynamodb_notifications.table_name
@@ -854,7 +848,6 @@ module "lambda_notification" {
   source = "../../modules/lambda-notification"
 
   environment                     = var.environment
-  aws_region                      = var.aws_region
   queue_arn                       = module.sqs.queue_arn
   appointment_requests_table_name = module.dynamodb_appointment_requests.table_name
   appointment_requests_table_arn  = module.dynamodb_appointment_requests.table_arn
@@ -881,7 +874,6 @@ module "lambda_contact" {
   source = "../../modules/lambda-contact"
 
   environment            = var.environment
-  aws_region             = var.aws_region
   web_signups_table_name = module.dynamodb_web_signups.table_name
   web_signups_table_arn  = module.dynamodb_web_signups.table_arn
   admin_email            = var.admin_email
