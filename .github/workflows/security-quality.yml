@@ -196,7 +196,7 @@ on:
           Defaults to common permissive licenses safe for commercial use.
         type: string
         required: false
-        default: "MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,0BSD,Unlicense,CC0-1.0,Python-2.0,PSF-2.0"
+        default: "MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,0BSD,Unlicense,CC0-1.0,CC-BY-4.0,Python-2.0,PSF-2.0"
 
       # ────────────────────────────────────────────────────────────────────────
       # Container Security — Trivy image scan
