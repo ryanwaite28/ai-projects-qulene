@@ -657,16 +657,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install OSV Scanner
+        run: |
+          curl -sSfL \
+            "https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64" \
+            -o /usr/local/bin/osv-scanner
+          chmod +x /usr/local/bin/osv-scanner
+          osv-scanner --version
+
       - name: Run OSV Scanner
         id: scan
-        uses: google/osv-scanner-action/osv-scanner-action@v2
-        with:
-          scan-args: |-
-            --recursive
-            --format sarif
-            --output osv-results.sarif
-            ${{ inputs.scan-path }}
         continue-on-error: true   # capture status ourselves below
+        run: |
+          osv-scanner \
+            --recursive \
+            --format sarif \
+            --output osv-results.sarif \
+            "${{ inputs.scan-path }}"
 
       - name: Upload OSV SARIF
         if: always()
