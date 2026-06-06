@@ -490,6 +490,7 @@ jobs:
       - name: Scan
         id: scan
         shell: sh
+        continue-on-error: true   # findings exit non-zero; capture via set-status below
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.semgrep-app-token }}
         run: |
@@ -658,7 +659,7 @@ jobs:
 
       - name: Run OSV Scanner
         id: scan
-        uses: google/osv-scanner-action/osv-scanner-action@v1
+        uses: google/osv-scanner-action/osv-scanner-action@v2
         with:
           scan-args: |-
             --recursive
@@ -737,7 +738,7 @@ jobs:
             npm install --ignore-scripts --silent 2>/dev/null || true
             # Use license-checker-rseidelsohn (zero-dependency, built on npm)
             npx --yes license-checker-rseidelsohn \
-              --onlyAllow "${ALLOW_LIST}" \
+              --onlyAllow "${ALLOW_LIST//,/;}" \
               --excludePrivatePackages \
               --summary \
               2>&1 | tee npm-licenses.txt || VIOLATIONS+=("npm")
