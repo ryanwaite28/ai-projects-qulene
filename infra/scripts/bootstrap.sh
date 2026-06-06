@@ -552,19 +552,46 @@ provision_state_bucket() {
   info "Provisioning Terraform state bucket: $bucket"
   if aws_prod s3api head-bucket --bucket "$bucket" 2>/dev/null; then
     mark_skipped "S3 $bucket (exists)"
-    return
+  else
+    aws_prod s3api create-bucket --bucket "$bucket" --region "$AWS_REGION" \
+      $([ "$AWS_REGION" = "us-east-1" ] || echo "--create-bucket-configuration LocationConstraint=$AWS_REGION") >/dev/null
+    aws_prod s3api put-bucket-versioning --bucket "$bucket" \
+      --versioning-configuration Status=Enabled >/dev/null
+    aws_prod s3api put-bucket-encryption --bucket "$bucket" \
+      --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' >/dev/null
+    aws_prod s3api put-public-access-block --bucket "$bucket" \
+      --public-access-block-configuration '{"BlockPublicAcls":true,"IgnorePublicAcls":true,"BlockPublicPolicy":true,"RestrictPublicBuckets":true}' >/dev/null
+    aws_prod s3api put-bucket-tagging --bucket "$bucket" \
+      --tagging "TagSet=[{Key=Project,Value=qulene},{Key=Environment,Value=$env},{Key=ManagedBy,Value=bootstrap}]" >/dev/null
+    mark_created "S3 $bucket (versioned, encrypted, public-access-blocked)"
   fi
-  aws_prod s3api create-bucket --bucket "$bucket" --region "$AWS_REGION" \
-    $([ "$AWS_REGION" = "us-east-1" ] || echo "--create-bucket-configuration LocationConstraint=$AWS_REGION") >/dev/null
-  aws_prod s3api put-bucket-versioning --bucket "$bucket" \
-    --versioning-configuration Status=Enabled >/dev/null
-  aws_prod s3api put-bucket-encryption --bucket "$bucket" \
-    --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' >/dev/null
-  aws_prod s3api put-public-access-block --bucket "$bucket" \
-    --public-access-block-configuration '{"BlockPublicAcls":true,"IgnorePublicAcls":true,"BlockPublicPolicy":true,"RestrictPublicBuckets":true}' >/dev/null
-  aws_prod s3api put-bucket-tagging --bucket "$bucket" \
-    --tagging "TagSet=[{Key=Project,Value=qulene},{Key=Environment,Value=$env},{Key=ManagedBy,Value=bootstrap}]" >/dev/null
-  mark_created "S3 $bucket (versioned, encrypted, public-access-blocked)"
+  # Always apply (idempotent) — grants CI role the Terraform state operations.
+  # CI cannot self-grant this; bootstrap (run by a developer with broad access) must set it.
+  local policy
+  policy=$(jq -n \
+    --arg bucket_arn "arn:aws:s3:::${bucket}" \
+    --arg role_arn  "$CI_ROLE_ARN" \
+    '{
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Sid: "TerraformStateObjectAccess",
+          Effect: "Allow",
+          Principal: { AWS: $role_arn },
+          Action: ["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:GetObjectVersion"],
+          Resource: "\($bucket_arn)/*"
+        },
+        {
+          Sid: "TerraformStateListAccess",
+          Effect: "Allow",
+          Principal: { AWS: $role_arn },
+          Action: ["s3:ListBucket","s3:GetBucketLocation"],
+          Resource: $bucket_arn
+        }
+      ]
+    }')
+  aws_prod s3api put-bucket-policy --bucket "$bucket" --policy "$policy" >/dev/null
+  info "  bucket policy applied — $CI_ROLE_NAME granted Terraform state access"
 }
 
 provision_state_lock_table() {
@@ -591,17 +618,43 @@ provision_lambda_packages_bucket() {
   info "Provisioning Lambda packages bucket: $bucket"
   if aws_prod s3api head-bucket --bucket "$bucket" 2>/dev/null; then
     mark_skipped "S3 $bucket (exists)"
-    return
+  else
+    aws_prod s3api create-bucket --bucket "$bucket" --region "$AWS_REGION" \
+      $([ "$AWS_REGION" = "us-east-1" ] || echo "--create-bucket-configuration LocationConstraint=$AWS_REGION") >/dev/null
+    aws_prod s3api put-bucket-versioning --bucket "$bucket" \
+      --versioning-configuration Status=Enabled >/dev/null
+    aws_prod s3api put-bucket-encryption --bucket "$bucket" \
+      --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' >/dev/null
+    aws_prod s3api put-bucket-tagging --bucket "$bucket" \
+      --tagging "TagSet=[{Key=Project,Value=qulene},{Key=Environment,Value=$env},{Key=ManagedBy,Value=bootstrap}]" >/dev/null
+    mark_created "S3 $bucket (versioned, encrypted)"
   fi
-  aws_prod s3api create-bucket --bucket "$bucket" --region "$AWS_REGION" \
-    $([ "$AWS_REGION" = "us-east-1" ] || echo "--create-bucket-configuration LocationConstraint=$AWS_REGION") >/dev/null
-  aws_prod s3api put-bucket-versioning --bucket "$bucket" \
-    --versioning-configuration Status=Enabled >/dev/null
-  aws_prod s3api put-bucket-encryption --bucket "$bucket" \
-    --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' >/dev/null
-  aws_prod s3api put-bucket-tagging --bucket "$bucket" \
-    --tagging "TagSet=[{Key=Project,Value=qulene},{Key=Environment,Value=$env},{Key=ManagedBy,Value=bootstrap}]" >/dev/null
-  mark_created "S3 $bucket (versioned, encrypted)"
+  # Always apply (idempotent) — grants CI role permission to upload Lambda ZIPs.
+  local policy
+  policy=$(jq -n \
+    --arg bucket_arn "arn:aws:s3:::${bucket}" \
+    --arg role_arn  "$CI_ROLE_ARN" \
+    '{
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Sid: "LambdaPackagesObjectAccess",
+          Effect: "Allow",
+          Principal: { AWS: $role_arn },
+          Action: ["s3:PutObject","s3:GetObject","s3:DeleteObject"],
+          Resource: "\($bucket_arn)/*"
+        },
+        {
+          Sid: "LambdaPackagesListAccess",
+          Effect: "Allow",
+          Principal: { AWS: $role_arn },
+          Action: ["s3:ListBucket"],
+          Resource: $bucket_arn
+        }
+      ]
+    }')
+  aws_prod s3api put-bucket-policy --bucket "$bucket" --policy "$policy" >/dev/null
+  info "  bucket policy applied — $CI_ROLE_NAME granted Lambda packages access"
 }
 
 write_ssm_params() {
