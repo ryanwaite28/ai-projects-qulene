@@ -5,7 +5,7 @@
 set -euo pipefail
 
 ENV="${1:?Usage: deploy-marketing.sh <env>  (e.g. dev | prod)}"
-PROFILE="${AWS_PROFILE:-rmw-llc}"
+PROFILE="${AWS_PROFILE-rmw-llc}"
 REGION="us-east-1"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
