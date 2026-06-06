@@ -98,8 +98,13 @@ jobs:
         run: cd apps/marketing && npx ng lint
 
   backend-test:
-    name: Backend unit tests (Vitest)
+    name: Backend unit + integration tests (Vitest + MiniStack)
     runs-on: ubuntu-latest
+    services:
+      ministack:
+        image: nahuelnucera/ministack
+        ports:
+          - 4566:4566
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,6 +117,19 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Wait for MiniStack
+        run: |
+          echo "Waiting for MiniStack on port 4566..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4566/_localstack/health > /dev/null 2>&1; then
+              echo "MiniStack is ready."
+              break
+            fi
+            echo "  attempt $i/30 — not ready yet, waiting 2s..."
+            sleep 2
+          done
+          curl -sf http://localhost:4566/_localstack/health || { echo "MiniStack did not become ready"; exit 1; }
 
       - name: Run tests
         run: cd backend && npm test
