@@ -65,13 +65,9 @@ jobs:
 
       - name: Deploy web app (dev)
         run: bash infra/scripts/deploy-web-app.sh dev
-        env:
-          AWS_PROFILE: ""
 
       - name: Deploy marketing (dev)
         run: bash infra/scripts/deploy-marketing.sh dev
-        env:
-          AWS_PROFILE: ""
 
       - name: Smoke tests
         run: |
