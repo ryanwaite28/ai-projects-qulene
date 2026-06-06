@@ -99,16 +99,19 @@ export async function updateService(
   const names: Record<string, string> = {};
   const values: Record<string, unknown> = { ':now': updatedAt };
 
+  // DynamoDB reserved keywords that must be aliased in expressions
+  const RESERVED: Record<string, string> = { status: '#st', name: '#nm' };
+
   for (const [key, value] of Object.entries(updates)) {
     if (value === undefined) continue;
-    if (key === 'status') {
-      names['#st'] = 'status';
-      setClauses.push('#st = :status');
-      values[':status'] = value;
+    const alias = RESERVED[key];
+    if (alias) {
+      names[alias] = key;
+      setClauses.push(`${alias} = :${key}`);
     } else {
       setClauses.push(`${key} = :${key}`);
-      values[`:${key}`] = value;
     }
+    values[`:${key}`] = value;
   }
 
   await dynamo.send(

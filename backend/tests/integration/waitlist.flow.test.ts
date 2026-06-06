@@ -371,17 +371,25 @@ describe('E2E: waitlist promotion when appointment is declined', () => {
 
     const now = new Date().toISOString();
 
+    // Use a dedicated service so no ACTIVE waitlist entries from earlier tests
+    // in this file can be picked up by promoteOldestForService before custB.
+    const isolatedSvcId = randomUUID();
+    await docClient.send(new PutCommand({
+      TableName: SVC_TABLE,
+      Item: { serviceId: isolatedSvcId, businessId: seedBizId, name: 'Promo Test Svc', description: '', durationMinutes: 30, price: 1000, status: 'ACTIVE', createdAt: now, updatedAt: now },
+    }));
+
     // Seed customer users (needed for unreadNotificationCount updates)
     await docClient.send(new PutCommand({
       TableName: USERS_TABLE,
       Item: { userId: custB, email: `${custB}@test.com`, role: 'CUSTOMER', firstName: 'B', lastName: 'Customer', unreadNotificationCount: 0, createdAt: now, updatedAt: now },
     }));
 
-    // Customer B joins the waitlist
+    // Customer B joins the waitlist for the isolated service
     const joinRes = await waitlistHandler(makeEvent({
       routeKey: 'POST /waitlist',
       userId: custB,
-      body: { serviceId: seedSvcId },
+      body: { serviceId: isolatedSvcId },
     }));
     expect(joinRes.statusCode).toBe(201);
     const { entryId: waitlistEntryId } = JSON.parse(joinRes.body).data;
@@ -394,7 +402,7 @@ describe('E2E: waitlist promotion when appointment is declined', () => {
         requestId,
         customerId: custA,
         businessId: seedBizId,
-        serviceId: seedSvcId,
+        serviceId: isolatedSvcId,
         proposedAt: new Date(Date.now() + 86_400_000).toISOString(),
         status: 'PENDING',
         idempotencyKey: randomUUID(),
