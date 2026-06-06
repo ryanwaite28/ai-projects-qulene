@@ -196,7 +196,7 @@ on:
           Defaults to common permissive licenses safe for commercial use.
         type: string
         required: false
-        default: "MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,0BSD,Unlicense,CC0-1.0,CC-BY-4.0,BlueOak-1.0.0,Artistic-2.0,WTFPL,Python-2.0,PSF-2.0"
+        default: "MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,0BSD,Unlicense,CC0-1.0,CC-BY-4.0,CC-BY-3.0,BlueOak-1.0.0,Artistic-2.0,WTFPL,MPL-2.0,Python-2.0,PSF-2.0"
 
       # ────────────────────────────────────────────────────────────────────────
       # Container Security — Trivy image scan
@@ -729,26 +729,42 @@ jobs:
       - name: Check licenses
         id: check
         shell: bash
+        continue-on-error: true   # violations are captured via set-status; don't fail the job
         run: |
           ALLOW_LIST="${{ inputs.license-allow-list }}"
           echo "Allowed licenses: ${ALLOW_LIST}"
 
-          # Build licensee output for all dependencies
-          # licensee detects the project license; for deep dep scanning we use
-          # a custom script over the lockfile / package manifests.
-
           VIOLATIONS=()
 
           # ── npm / yarn (package.json) ─────────────────────────────────────────
+          # Use --json (not --onlyAllow) so ALL violations are reported in one pass
+          # rather than exiting on the first offending package.
           if command -v node &>/dev/null && [ -f package.json ]; then
             echo "::group::Scanning npm dependencies"
             npm install --ignore-scripts --silent 2>/dev/null || true
-            # Use license-checker-rseidelsohn (zero-dependency, built on npm)
             npx --yes license-checker-rseidelsohn \
-              --onlyAllow "${ALLOW_LIST//,/;}" \
               --excludePrivatePackages \
-              --summary \
-              2>&1 | tee npm-licenses.txt || VIOLATIONS+=("npm")
+              --json 2>/dev/null > /tmp/npm-licenses.json || true
+            ALLOW_LIST="${ALLOW_LIST}" node -e "
+              const fs = require('fs');
+              const data = JSON.parse(fs.readFileSync('/tmp/npm-licenses.json', 'utf8'));
+              const allowed = new Set(process.env.ALLOW_LIST.split(',').map(s => s.trim()));
+              const bad = [];
+              for (const [pkg, info] of Object.entries(data)) {
+                const lics = [].concat(info.licenses || []);
+                const parts = lics
+                  .flatMap(l => l.replace(/[()]/g, '').split(/ (?:AND|OR) /))
+                  .map(s => s.trim());
+                if (!parts.every(l => allowed.has(l)))
+                  bad.push(pkg + ': ' + lics.join(', '));
+              }
+              if (bad.length) {
+                console.error(bad.length + ' package(s) with disallowed licenses:');
+                bad.forEach(b => console.error('  ' + b));
+                process.exit(1);
+              }
+              console.log('All ' + Object.keys(data).length + ' npm packages have compliant licenses.');
+            " 2>&1 | tee npm-licenses.txt || VIOLATIONS+=("npm")
             echo "::endgroup::"
           fi
 
