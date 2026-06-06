@@ -979,11 +979,13 @@ output "aws_region" {
 }
 
 output "hosted_zone_id" {
-  value = data.aws_ssm_parameter.hosted_zone_id.value
+  value     = data.aws_ssm_parameter.hosted_zone_id.value
+  sensitive = true
 }
 
 output "acm_certificate_arn" {
-  value = data.aws_ssm_parameter.acm_certificate_arn.value
+  value     = data.aws_ssm_parameter.acm_certificate_arn.value
+  sensitive = true
 }
 
 output "cognito_user_pool_id" {

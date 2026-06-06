@@ -88,10 +88,10 @@ output "aws_region" {
 
 output "hosted_zone_id" {
   value     = data.aws_ssm_parameter.hosted_zone_id.value
-  sensitive = false
+  sensitive = true
 }
 
 output "acm_certificate_arn" {
   value     = data.aws_ssm_parameter.acm_certificate_arn.value
-  sensitive = false
+  sensitive = true
 }
