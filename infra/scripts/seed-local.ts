@@ -74,7 +74,6 @@ const IDS = {
   wl2: 'e2000000-0000-0000-0000-000000000002', // PROMOTED
 };
 
-const now = new Date().toISOString();
 const past = (daysAgo: number) =>
   new Date(Date.now() - daysAgo * 86_400_000).toISOString();
 const future = (daysAhead: number) =>

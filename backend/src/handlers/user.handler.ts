@@ -1,7 +1,7 @@
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { createDynamoClient } from '../db/dynamo.client.js';
-import { extractClaims, requireRole, type ParsedClaims } from '../middleware/auth.middleware.js';
+import { extractClaims, type ParsedClaims } from '../middleware/auth.middleware.js';
 import type { UserRole } from '../types/index.js';
 import {
   listForUser,
