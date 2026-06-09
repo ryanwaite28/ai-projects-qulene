@@ -1,7 +1,9 @@
+import '@aws-amplify/react-native';
 import 'react-native-get-random-values';
 import '../global.css';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 
 export default function RootLayout() {
@@ -28,11 +30,13 @@ export default function RootLayout() {
   if (isLoading) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(business)" />
-      <Stack.Screen name="(customer)" />
-    </Stack>
+    <SafeAreaProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(business)" />
+        <Stack.Screen name="(customer)" />
+      </Stack>
+    </SafeAreaProvider>
   );
 }

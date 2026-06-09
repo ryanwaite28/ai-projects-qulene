@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApi, ApiError } from '../../hooks/useApi';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { AppointmentCard } from '../../components/ui/AppointmentCard';
@@ -156,13 +157,14 @@ export default function DashboardScreen() {
   const handleNoShow  = (id: string) => performAction(id, 'noshow',  'NO_SHOW',   'Mark this appointment as a no-show?');
 
   return (
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
     <ScrollView
-      className="flex-1 bg-white"
+      className="flex-1"
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
-      <View className="px-4 pt-12 pb-10">
+      <View className="px-4 pt-4 pb-10">
         <Text className="text-2xl font-bold text-gray-900 mb-4">Requests</Text>
 
         {/* Filter chips */}
@@ -249,5 +251,6 @@ export default function DashboardScreen() {
         )}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }

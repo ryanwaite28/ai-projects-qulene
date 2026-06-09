@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useApi, ApiError } from '../../hooks/useApi';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -141,18 +142,21 @@ export default function WaitlistScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView className="flex-1 bg-white px-6 pt-14">
-        <Text className="text-2xl font-bold text-gray-900 mb-6">My Waitlist</Text>
-        {[0, 1, 2].map((i) => (
-          <SkeletonRow key={i} />
-        ))}
-      </ScrollView>
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        <ScrollView className="flex-1 px-6">
+          <Text className="text-2xl font-bold text-gray-900 mb-6">My Waitlist</Text>
+          {[0, 1, 2].map((i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
     <ScrollView
-      className="flex-1 bg-white px-6 pt-14"
+      className="flex-1 px-6"
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
     >
       <Text className="text-2xl font-bold text-gray-900 mb-6">My Waitlist</Text>
@@ -225,5 +229,6 @@ export default function WaitlistScreen() {
         </>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }

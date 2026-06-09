@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApi, ApiError } from '../../hooks/useApi';
 import { ErrorState } from '../../components/ui/ErrorState';
 import type { AppointmentRequest, AppointmentStatus } from '@qulene/api-types';
@@ -137,21 +138,24 @@ export default function AppointmentsScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView className="flex-1 bg-white px-4 pt-12">
-        <Text className="text-2xl font-bold text-gray-900 mb-6">My Appointments</Text>
-        {[0, 1, 2, 3].map((i) => <SkeletonRow key={i} />)}
-      </ScrollView>
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        <ScrollView className="flex-1 px-4">
+          <Text className="text-2xl font-bold text-gray-900 mb-6">My Appointments</Text>
+          {[0, 1, 2, 3].map((i) => <SkeletonRow key={i} />)}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
     <ScrollView
-      className="flex-1 bg-white"
+      className="flex-1"
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
-      <View className="px-4 pt-12 pb-10">
+      <View className="px-4 pt-4 pb-10">
         <Text className="text-2xl font-bold text-gray-900 mb-6">My Appointments</Text>
 
         {fetchError ? (
@@ -220,5 +224,6 @@ export default function AppointmentsScreen() {
         )}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }

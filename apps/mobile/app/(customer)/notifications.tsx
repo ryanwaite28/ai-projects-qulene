@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotificationApi } from '../../hooks/useNotificationApi';
 import { ErrorState } from '../../components/ui/ErrorState';
 import type { Notification } from '@qulene/api-types';
@@ -93,18 +94,21 @@ export default function NotificationsScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView className="flex-1 bg-white px-6 pt-14">
-        <Text className="text-2xl font-bold text-gray-900 mb-6">Notifications</Text>
-        {[0, 1, 2].map((i) => (
-          <SkeletonRow key={i} />
-        ))}
-      </ScrollView>
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        <ScrollView className="flex-1 px-6">
+          <Text className="text-2xl font-bold text-gray-900 mb-6">Notifications</Text>
+          {[0, 1, 2].map((i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
     <ScrollView
-      className="flex-1 bg-white px-6 pt-14"
+      className="flex-1 px-6"
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
     >
       <Text className="text-2xl font-bold text-gray-900 mb-6">Notifications</Text>
@@ -173,5 +177,6 @@ export default function NotificationsScreen() {
         </>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }

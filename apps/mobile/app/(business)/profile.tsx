@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useBusinessApi } from '../../hooks/useBusinessApi';
 import { ApiError } from '../../hooks/useApi';
@@ -147,22 +148,25 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView className="flex-1 bg-white px-6 pt-12">
-        <View className="items-center mb-8">
-          <SkeletonBox w="w-20" h="h-20" />
-        </View>
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <View key={i} className="mb-4">
-            <SkeletonBox w="w-24" h="h-4 mb-2" />
-            <SkeletonBox w="w-full" h="h-12" />
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        <ScrollView className="flex-1 px-6">
+          <View className="items-center mb-8">
+            <SkeletonBox w="w-20" h="h-20" />
           </View>
-        ))}
-      </ScrollView>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View key={i} className="mb-4">
+              <SkeletonBox w="w-24" h="h-4 mb-2" />
+              <SkeletonBox w="w-full" h="h-12" />
+            </View>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-white px-6 pt-12">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+    <ScrollView className="flex-1 px-6">
       <Text className="text-2xl font-bold text-gray-900 mb-6">Business Profile</Text>
 
       <View className="items-center mb-8">
@@ -223,6 +227,7 @@ export default function ProfileScreen() {
           <Text className="text-white font-semibold text-base">Save Profile</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
-  );
+      </ScrollView>
+      </SafeAreaView>
+    );
 }

@@ -8,6 +8,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBusinessApi } from '../../hooks/useBusinessApi';
 import { ApiError } from '../../hooks/useApi';
 import type { AvailabilityWindow } from '@qulene/api-types';
@@ -104,7 +105,7 @@ export default function AvailabilityScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-white px-6 pt-12">
+      <SafeAreaView edges={['top']} className="flex-1 bg-white px-6">
         <SkeletonBox w="w-48" h="h-8 mb-6" />
         {[0, 1, 2, 3, 4, 5, 6].map((i) => (
           <View key={i} className="mb-4">
@@ -112,7 +113,7 @@ export default function AvailabilityScreen() {
             <SkeletonBox w="w-full" h="h-10" />
           </View>
         ))}
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -123,8 +124,8 @@ export default function AvailabilityScreen() {
   const hasAnyWindows = windows.length > 0;
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="px-6 pt-12 pb-4">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+      <View className="px-6 pb-4">
         <Text className="text-2xl font-bold text-gray-900">Availability</Text>
         <Text className="text-sm text-gray-500 mt-1">
           Set your weekly recurring hours. Tap + to add a window.
@@ -244,6 +245,6 @@ export default function AvailabilityScreen() {
           </TouchableOpacity>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }

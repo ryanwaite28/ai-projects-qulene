@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import type { User } from '@qulene/api-types';
@@ -8,7 +9,6 @@ import type { User } from '@qulene/api-types';
 export default function LoginScreen() {
   const { login, isProfileSynced, markProfileSynced } = useAuth();
   const { request } = useApi();
-  const router = useRouter();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,8 +38,7 @@ export default function LoginScreen() {
           // Profile sync will retry on next login; do not block the user
         }
       }
-
-      router.replace('/(tabs)');
+      // Navigation is handled by RootLayout's useEffect watching session state
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
@@ -48,7 +47,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white justify-center px-6">
+    <SafeAreaView className="flex-1 bg-white justify-center px-6">
       <Text className="text-3xl font-bold text-gray-900 mb-2">Welcome back</Text>
       <Text className="text-base text-gray-500 mb-8">Sign in to your Qulene account</Text>
 
@@ -99,6 +98,6 @@ export default function LoginScreen() {
           <Text className="text-indigo-600 font-medium text-sm">Register</Text>
         </Link>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

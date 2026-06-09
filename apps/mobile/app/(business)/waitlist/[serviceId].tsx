@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useApi } from '../../../hooks/useApi';
 import { ErrorState } from '../../../components/ui/ErrorState';
@@ -58,20 +59,23 @@ export default function BusinessWaitlistScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView className="flex-1 bg-white px-6 pt-14">
-        <TouchableOpacity onPress={() => router.back()} className="mb-6">
-          <Text className="text-indigo-600 font-medium">‹ Back</Text>
-        </TouchableOpacity>
-        <Text className="text-2xl font-bold text-gray-900 mb-6">{title}</Text>
-        {[0, 1, 2].map((i) => (
-          <SkeletonRow key={i} />
-        ))}
-      </ScrollView>
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        <ScrollView className="flex-1 px-6">
+          <TouchableOpacity onPress={() => router.back()} className="mb-6">
+            <Text className="text-indigo-600 font-medium">‹ Back</Text>
+          </TouchableOpacity>
+          <Text className="text-2xl font-bold text-gray-900 mb-6">{title}</Text>
+          {[0, 1, 2].map((i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-white px-6 pt-14">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+    <ScrollView className="flex-1 px-6">
       <TouchableOpacity onPress={() => router.back()} className="mb-6">
         <Text className="text-indigo-600 font-medium">‹ Back</Text>
       </TouchableOpacity>
@@ -113,5 +117,6 @@ export default function BusinessWaitlistScreen() {
         ))
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }

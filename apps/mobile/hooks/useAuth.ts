@@ -4,6 +4,7 @@ import {
   cognitoSignIn,
   cognitoSignOut,
   cognitoSignUp,
+  cognitoConfirmSignUp,
   getCurrentSession,
   type SignUpParams,
 } from '../lib/cognito';
@@ -22,7 +23,8 @@ export interface UseAuthResult {
   session: AuthSession | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (params: SignUpParams) => Promise<void>;
+  register: (params: SignUpParams) => Promise<{ needsConfirmation: boolean }>;
+  confirmRegistration: (email: string, password: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   markProfileSynced: () => Promise<void>;
   isProfileSynced: () => Promise<boolean>;
@@ -46,20 +48,33 @@ export function useAuth(): UseAuthResult {
   const login = useCallback(async (email: string, password: string) => {
     await cognitoSignIn(email, password);
     const s = await getCurrentSession();
-    if (s) {
-      await SecureStore.setItemAsync(TOKEN_KEY, s.accessToken);
-    }
+    if (!s) throw new Error('Signed in but session could not be read. Please try again.');
+    await SecureStore.setItemAsync(TOKEN_KEY, s.accessToken);
     setSession(s);
   }, []);
 
-  const register = useCallback(async (params: SignUpParams) => {
-    await cognitoSignUp(params);
+  const register = useCallback(async (params: SignUpParams): Promise<{ needsConfirmation: boolean }> => {
+    const result = await cognitoSignUp(params);
+    if (result.nextStep.signUpStep === 'CONFIRM_SIGN_UP') {
+      return { needsConfirmation: true };
+    }
+    // Auto-confirmed (e.g. via Lambda trigger) — sign in immediately
     await cognitoSignIn(params.email, params.password);
     const s = await getCurrentSession();
-    if (s) {
-      await SecureStore.setItemAsync(TOKEN_KEY, s.accessToken);
-      await SecureStore.setItemAsync(PROFILE_SYNCED_KEY, 'false');
-    }
+    if (!s) throw new Error('Signed in but session could not be read. Please try again.');
+    await SecureStore.setItemAsync(TOKEN_KEY, s.accessToken);
+    await SecureStore.setItemAsync(PROFILE_SYNCED_KEY, 'false');
+    setSession(s);
+    return { needsConfirmation: false };
+  }, []);
+
+  const confirmRegistration = useCallback(async (email: string, password: string, code: string) => {
+    await cognitoConfirmSignUp(email, code);
+    await cognitoSignIn(email, password);
+    const s = await getCurrentSession();
+    if (!s) throw new Error('Signed in but session could not be read. Please try again.');
+    await SecureStore.setItemAsync(TOKEN_KEY, s.accessToken);
+    await SecureStore.setItemAsync(PROFILE_SYNCED_KEY, 'false');
     setSession(s);
   }, []);
 
@@ -79,5 +94,5 @@ export function useAuth(): UseAuthResult {
     return val === 'true';
   }, []);
 
-  return { session, isLoading, login, register, logout, markProfileSynced, isProfileSynced };
+  return { session, isLoading, login, register, confirmRegistration, logout, markProfileSynced, isProfileSynced };
 }

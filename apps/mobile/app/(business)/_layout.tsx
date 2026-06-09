@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useUserApi } from '../../hooks/useUserApi';
 
@@ -6,8 +7,6 @@ export default function BusinessLayout() {
   const { getMyProfile } = useUserApi();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Badge count fetched on layout mount; refreshes on re-mount (e.g. app open).
-  // In-screen mark-as-read updates the list locally but not this badge — acceptable for portfolio.
   useEffect(() => {
     getMyProfile()
       .then((user) => setUnreadCount(user.unreadNotificationCount))
@@ -16,17 +15,39 @@ export default function BusinessLayout() {
 
   return (
     <Tabs screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-      <Tabs.Screen name="services" options={{ title: 'Services' }} />
-      <Tabs.Screen name="availability" options={{ title: 'Availability' }} />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>🏠</Text>,
+        }}
+      />
+      <Tabs.Screen
+        name="services"
+        options={{
+          title: 'Services',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>🛠️</Text>,
+        }}
+      />
       <Tabs.Screen
         name="notifications"
         options={{
           title: 'Notifications',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>🔔</Text>,
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>⚙️</Text>,
+        }}
+      />
+      {/* Navigable screens hidden from the tab bar */}
+      <Tabs.Screen name="profile"      options={{ tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="availability" options={{ tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="waitlist"     options={{ tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
   );
 }

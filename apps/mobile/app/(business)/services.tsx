@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { useBusinessApi } from '../../hooks/useBusinessApi';
@@ -197,7 +198,7 @@ export default function ServicesScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-white px-6 pt-12">
+      <SafeAreaView edges={['top']} className="flex-1 bg-white px-6">
         <SkeletonBox w="w-40" h="h-8 mb-6" />
         {[0, 1, 2].map((i) => (
           <View key={i} className="mb-4 border border-gray-100 rounded-xl p-4">
@@ -206,13 +207,13 @@ export default function ServicesScreen() {
             <SkeletonBox w="w-full" h="h-4" />
           </View>
         ))}
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="px-6 pt-12 pb-4">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+      <View className="px-6 pb-4">
         <Text className="text-2xl font-bold text-gray-900">Services</Text>
       </View>
 
@@ -415,6 +416,6 @@ export default function ServicesScreen() {
           </TouchableOpacity>
         </ScrollView>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }

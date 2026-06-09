@@ -7,6 +7,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCustomerApi } from '../../../hooks/useCustomerApi';
 import { useApi, ApiError } from '../../../hooks/useApi';
@@ -117,33 +118,35 @@ export default function BusinessDetailScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView className="flex-1 bg-white px-6 pt-12">
-        <TouchableOpacity onPress={() => router.back()} className="mb-6">
-          <Text className="text-indigo-600 font-medium">‹ Back</Text>
-        </TouchableOpacity>
-        <View className="flex-row items-center mb-6">
-          <SkeletonBox w="w-16" h="h-16" />
-          <View className="flex-1 ml-4">
-            <SkeletonBox w="w-48" h="h-6 mb-2" />
-            <SkeletonBox w="w-28" h="h-4" />
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        <ScrollView className="flex-1 px-6">
+          <TouchableOpacity onPress={() => router.back()} className="mb-6">
+            <Text className="text-indigo-600 font-medium">‹ Back</Text>
+          </TouchableOpacity>
+          <View className="flex-row items-center mb-6">
+            <SkeletonBox w="w-16" h="h-16" />
+            <View className="flex-1 ml-4">
+              <SkeletonBox w="w-48" h="h-6 mb-2" />
+              <SkeletonBox w="w-28" h="h-4" />
+            </View>
           </View>
-        </View>
-        <SkeletonBox w="w-full" h="h-16 mb-6" />
-        <SkeletonBox w="w-32" h="h-5 mb-3" />
-        {[0, 1, 2].map((i) => (
-          <SkeletonBox key={i} w="w-full" h="h-14 mb-3" />
-        ))}
-        <SkeletonBox w="w-32" h="h-5 mb-3 mt-2" />
-        {[0, 1, 2].map((i) => (
-          <SkeletonBox key={i} w="w-full" h="h-10 mb-2" />
-        ))}
-      </ScrollView>
+          <SkeletonBox w="w-full" h="h-16 mb-6" />
+          <SkeletonBox w="w-32" h="h-5 mb-3" />
+          {[0, 1, 2].map((i) => (
+            <SkeletonBox key={i} w="w-full" h="h-14 mb-3" />
+          ))}
+          <SkeletonBox w="w-32" h="h-5 mb-3 mt-2" />
+          {[0, 1, 2].map((i) => (
+            <SkeletonBox key={i} w="w-full" h="h-10 mb-2" />
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   if (notFound || !business) {
     return (
-      <View className="flex-1 bg-white px-6 pt-12 items-center">
+      <SafeAreaView edges={['top']} className="flex-1 bg-white px-6 items-center">
         <TouchableOpacity onPress={() => router.back()} className="self-start mb-8">
           <Text className="text-indigo-600 font-medium">‹ Back</Text>
         </TouchableOpacity>
@@ -152,15 +155,16 @@ export default function BusinessDetailScreen() {
         <Text className="text-sm text-gray-500 text-center">
           This business may no longer be available.
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   const windowsByDay = DAY_LABELS.map((_, i) => windows.filter((w) => w.dayOfWeek === i));
 
   return (
-    <ScrollView className="flex-1 bg-white">
-      <View className="px-6 pt-12 pb-4">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+    <ScrollView className="flex-1">
+      <View className="px-6 pt-4 pb-4">
         <TouchableOpacity onPress={() => router.back()} className="mb-4">
           <Text className="text-indigo-600 font-medium">‹ Back</Text>
         </TouchableOpacity>
@@ -283,5 +287,6 @@ export default function BusinessDetailScreen() {
         )}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }

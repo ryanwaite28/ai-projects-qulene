@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useApi, ApiError } from '../../../hooks/useApi';
 
@@ -110,8 +111,9 @@ export default function AppointmentRequestScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-white" keyboardShouldPersistTaps="handled">
-      <View className="px-6 pt-12 pb-10">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+    <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
+      <View className="px-6 pt-4 pb-10">
         {/* Back */}
         <TouchableOpacity onPress={() => router.back()} className="mb-6">
           <Text className="text-indigo-600 font-medium">‹ Back</Text>
@@ -187,5 +189,6 @@ export default function AppointmentRequestScreen() {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
